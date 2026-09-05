@@ -112,6 +112,12 @@ def main(argv=None) -> int:
             print(f"LLM attempt {attempt} raised: {exc}")
             _revert(written)
             return 1
+        if not written:
+            # The item is already satisfied — check it off, no code change.
+            mark_done(slug)
+            commit_and_push(f"chore: {slug} already satisfied (no change needed)", slug)
+            print(f"Marked {slug} done (already satisfied).")
+            return 0
         if not _run(["git", "diff", "--stat"]).stdout.strip():
             print("LLM produced no effective change; skipping (no commit).")
             _revert(written)

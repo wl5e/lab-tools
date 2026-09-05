@@ -121,7 +121,8 @@ def implement(slug: str, description: str, feedback: str | None = None) -> Tuple
 
     files = result.get("files") or {}
     if not files:
-        raise RuntimeError(f"DeepSeek returned no file changes: {result.get('summary', '')}")
+        # Item already satisfied — no change needed; the caller checks it off.
+        return result.get("summary") or f"chore: {slug}", []
 
     written: List[Tuple[str, bool]] = []
     for rel, text in files.items():
