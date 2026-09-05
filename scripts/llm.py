@@ -1,10 +1,15 @@
 """DeepSeek-backed implementation of backlog items that lack a handler.
 
 Used by ``daily.py`` when the next undone item has no deterministic handler and
-``DEEPSEEK_API_KEY`` is set. The model is given the item description plus the
-current sources, and returns the full new content of only the files it changes.
-The change is committed only if the test suite stays green — that gate is what
-keeps the stream "relevant" instead of slop.
+``DEEPSEEK_API_KEY`` is set. The model is given the item description plus a
+*scoped* view of the repository — the manifest (package structure) and only the
+files of the tool(s) named by the item — and returns the full new content of
+only the files it changes. The change is committed only if the test suite
+stays green.
+
+Scoping is what keeps cost and latency down: sending one tool's files instead
+of the whole 17-tool codebase. The weekly replenish (``propose_items``) keeps
+the full view because it needs to see everything to avoid duplicates.
 
 The API is OpenAI-compatible, so swapping to another provider later is a
 one-line ``API_URL`` / model change.
@@ -14,16 +19,24 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 API_URL = "https://api.deepseek.com/chat/completions"
 DEFAULT_MODEL = "deepseek-v4-flash"
 
-CONTEXT_GLOBS = ["lab_tools/**/*.py", "tests/**/*.py", "pyproject.toml"]
+# Always sent: a lightweight manifest so the model knows the package layout and
+# which tools exist, without the cost of every source file.
+MANIFEST_GLOBS = [
+    "lab_tools/__init__.py",
+    "lab_tools/cli.py",
+    "lab_tools/*/__init__.py",
+    "pyproject.toml",
+]
 
 SYSTEM_PROMPT = (
     "You are an expert Python developer maintaining `lab-tools`, a library of "
@@ -55,13 +68,67 @@ PROPOSE_PROMPT = (
 )
 
 
-def _gather_context() -> str:
-    parts = []
-    for pattern in CONTEXT_GLOBS:
-        for p in sorted(ROOT.glob(pattern)):
+def _index_tools() -> Dict[str, List[Path]]:
+    """Map each tool name to its source files (module + its tests)."""
+    tools: Dict[str, List[Path]] = {}
+    for domain in (ROOT / "lab_tools").iterdir():
+        if not domain.is_dir() or domain.name.startswith("_"):
+            continue
+        for entry in sorted(domain.iterdir()):
+            if entry.name in ("__init__.py", "__pycache__"):
+                continue
+            if entry.is_file() and entry.suffix == ".py":
+                tools.setdefault(entry.stem, []).append(entry)
+            elif entry.is_dir():
+                tools.setdefault(entry.name, []).extend(sorted(entry.rglob("*.py")))
+    tests = ROOT / "tests"
+    if tests.exists():
+        for tool, paths in tools.items():
+            for tp in sorted(tests.glob(f"test_{tool}*.py")):
+                if tp not in paths:
+                    paths.append(tp)
+    return tools
+
+
+def _manifest_paths() -> List[Path]:
+    paths: List[Path] = []
+    for g in MANIFEST_GLOBS:
+        for p in sorted(ROOT.glob(g)):
             if p.is_file():
-                parts.append(f"### {p.relative_to(ROOT)}\n{p.read_text(encoding='utf-8')}")
-    return "\n\n".join(parts)
+                paths.append(p)
+    return paths
+
+
+def _render(paths: List[Path]) -> str:
+    return "\n\n".join(
+        f"### {p.relative_to(ROOT)}\n{p.read_text(encoding='utf-8')}" for p in paths
+    )
+
+
+def _gather_context_full() -> str:
+    """The whole codebase — used only by the weekly replenish."""
+    paths: List[Path] = []
+    for pattern in ["lab_tools/**/*.py", "tests/**/*.py"]:
+        paths.extend(p for p in sorted(ROOT.glob(pattern)) if "__pycache__" not in str(p))
+    for g in ["pyproject.toml", "README.md"]:
+        p = ROOT / g
+        if p.exists():
+            paths.append(p)
+    return _render(sorted(paths))
+
+
+def _gather_context_scoped(slug: str, description: str) -> str:
+    """Manifest + only the files of the tool(s) named by the item."""
+    paths = _manifest_paths()
+    tools = _index_tools()
+    slug_compact = re.sub(r"[^a-z0-9]", "", slug.lower())
+    desc = description.lower()
+    matched = [n for n in tools if n.replace("_", "") in slug_compact or n in desc]
+    for n in matched:
+        for p in tools[n]:
+            if p not in paths:
+                paths.append(p)
+    return _render(paths)
 
 
 def _call(messages) -> str:
@@ -96,10 +163,10 @@ def _call(messages) -> str:
 
 def implement(slug: str, description: str, feedback: str | None = None) -> Tuple[str, List[Tuple[str, bool]]]:
     """Implement one item via DeepSeek. Returns (commit_subject, written)."""
-    context = _gather_context()
+    context = _gather_context_scoped(slug, description)
     user = (
         f"Backlog item `{slug}`: {description}\n\n"
-        f"Current repository files:\n\n{context}"
+        f"Repository files (scoped to this item):\n\n{context}"
     )
     if feedback:
         user += (
@@ -141,7 +208,7 @@ def implement(slug: str, description: str, feedback: str | None = None) -> Tuple
 
 def propose_items(count: int = 10):
     """Ask DeepSeek for ``count`` new backlog items, as (slug, title, why)."""
-    context = _gather_context()
+    context = _gather_context_full()
     backlog = (ROOT / "BACKLOG.md").read_text(encoding="utf-8")
     user = (
         "Current repository files:\n\n" + context
