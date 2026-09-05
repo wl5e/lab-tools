@@ -6,30 +6,31 @@ Python library with one entry point.
 
 ```bash
 pip install .
+lab-tools --help
 lab-tools cfu --help
 ```
 
 ## Tools
 
-| Domain | Tool | What it does | Status |
-|---|---|---|---|
-| Microbiology / QC | `cfu` | CFU enumeration from dilution plates (USP ⟨61⟩/⟨62⟩, EP 2.6.12) | ✅ |
-| | `mpn` | Most probable number | planned |
-| | `media-fill` | Aseptic process simulation (USP ⟨1116⟩) | planned |
-| | `growth-curve` | Logistic / Gompertz growth kinetics | planned |
-| | `bioburden-spc` | I-MR control charts (Western Electric) | planned |
-| Sterility / thermal | `d-z-f0` | D-value, Z-value, F0 lethality | planned |
-| | `sterility` | Sterility-test sample sizes (USP ⟨71⟩) | planned |
-| | `endotoxin` | Endotoxin limits + MVD (USP ⟨85⟩) | planned |
-| Molecular biology | `qpcr` | ΔΔCt relative gene expression | planned |
-| | `primers` | Annealing temperature + dimer analysis | planned |
-| | `restriction` | Restriction digest simulation | planned |
-| | `phylogeny` | Neighbor-joining trees | planned |
-| Analytical | `elisa` | 4PL standard curves | planned |
-| | `lod-loq` | LOD / LOQ (ICH Q2(R1)) | planned |
-| | `hplc-sst` | HPLC system suitability | planned |
-| Lab operations | `hemocytometer` | Cell count / viability | planned |
-| | `pipette-cal` | Pipette calibration (ISO 8655) | planned |
+| Domain | Tool | What it does |
+|---|---|---|
+| Microbiology / QC | `cfu` | CFU enumeration from dilution plates (USP ⟨61⟩/⟨62⟩, EP 2.6.12) |
+| | `mpn` | Most probable number |
+| | `media-fill` | Aseptic process simulation (USP ⟨1116⟩) |
+| | `growth-curve` | Logistic / Gompertz growth kinetics |
+| | `bioburden-spc` | I-MR control charts (Western Electric) |
+| Sterility / thermal | `d-z-f0` | D-value, Z-value, F0 lethality |
+| | `sterility` | Sterility-test sample sizes (USP ⟨71⟩) |
+| | `endotoxin` | Endotoxin limits + MVD (USP ⟨85⟩) |
+| Molecular biology | `qpcr` | ΔΔCt relative gene expression |
+| | `primers` | Annealing temperature + dimer analysis |
+| | `restriction` | Restriction digest simulation |
+| | `phylogeny` | Neighbor-joining trees |
+| Analytical | `elisa` | 4PL standard curves |
+| | `lod-loq` | LOD / LOQ (ICH Q2(R1)) |
+| | `hplc-sst` | HPLC system suitability |
+| Lab operations | `hemocytometer` | Cell count / viability |
+| | `pipette-cal` | Pipette calibration (ISO 8655) |
 
 ## Development
 
