@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lab-tools"
+version = "0.1.0"
+description = "CLI tools for pharmaceutical, microbiology and molecular-biology laboratory data"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Collins Amatu Gorgerat" }]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.scripts]
+lab-tools = "lab_tools.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["lab_tools*"]
