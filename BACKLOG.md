@@ -12,7 +12,7 @@ Keep entries concrete: what changes, and why it matters for lab / GMP work.
 
 - [x] `cfu_report_export` Add a formatted human-readable report (not just JSON) to the `cfu` tool. | handler:
 - [x] `cfu_edge_cases` Harden `cfu` input validation (zero/negative volumes, empty dilutions) with tests. | handler:
-- [ ] `cfu_docs` Add a worked example with real numbers to the `cfu` README section. | handler:
+- [x] `cfu_docs` Add a worked example with real numbers to the `cfu` README section. | handler:
 
 - [ ] `dzf0-f0-lethality` Add F0 lethality calculation to d-z-f0 — The d-z-f0 tool currently only computes D and Z values, but README advertises F0. Labs validating terminal sterilization need F0 = sum(10^((T-121.1)/Z) * dt) from a time-temperature profile. | handler:
 - [ ] `primers-self-dimer` Detect 3' primer self-dimers in primers tool — README claims dimer analysis, but primers.py only calculates Tm. A 3' self-complementarity score would catch self-dimer formation, a common cause of PCR failure. | handler:
