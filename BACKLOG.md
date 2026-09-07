@@ -14,7 +14,7 @@ Keep entries concrete: what changes, and why it matters for lab / GMP work.
 - [x] `cfu_edge_cases` Harden `cfu` input validation (zero/negative volumes, empty dilutions) with tests. | handler:
 - [x] `cfu_docs` Add a worked example with real numbers to the `cfu` README section. | handler:
 
-- [ ] `dzf0-f0-lethality` Add F0 lethality calculation to d-z-f0 — The d-z-f0 tool currently only computes D and Z values, but README advertises F0. Labs validating terminal sterilization need F0 = sum(10^((T-121.1)/Z) * dt) from a time-temperature profile. | handler:
+- [x] `dzf0-f0-lethality` Add F0 lethality calculation to d-z-f0 — The d-z-f0 tool currently only computes D and Z values, but README advertises F0. Labs validating terminal sterilization need F0 = sum(10^((T-121.1)/Z) * dt) from a time-temperature profile. | handler:
 - [ ] `primers-self-dimer` Detect 3' primer self-dimers in primers tool — README claims dimer analysis, but primers.py only calculates Tm. A 3' self-complementarity score would catch self-dimer formation, a common cause of PCR failure. | handler:
 - [ ] `qpcr-efficiency-correction` Support per-target amplification efficiency in qPCR ΔΔCq — Current qpcr hardcodes 2^(-ΔΔCq), assuming 100% efficiency. Adding optional primer efficiency values lets users report corrected fold changes when efficiencies differ from 2. | handler:
 - [ ] `elisa-4pl-ci` Implement true 4PL inverse concentration confidence intervals — elisa concentration_ci warns and returns NaN for the 4PL model, so unknown concentrations have no uncertainty. Storing the covariance from curve_fit enables a delta-method CI for each sample. | handler:
