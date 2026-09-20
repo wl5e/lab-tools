@@ -118,7 +118,10 @@ def main(argv=None) -> int:
             commit_and_push(f"chore: {slug} already satisfied (no change needed)", slug)
             print(f"Marked {slug} done (already satisfied).")
             return 0
-        if not _run(["git", "diff", "--stat"]).stdout.strip():
+        # `git diff` ignores untracked files, so a change that only *adds* a
+        # new file would look like "no change". Use `git status --porcelain` to
+        # catch created, modified and untracked paths.
+        if not _run(["git", "status", "--porcelain"]).stdout.strip():
             print("LLM produced no effective change; skipping (no commit).")
             _revert(written)
             return 1
