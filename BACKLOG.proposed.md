@@ -1,13 +1,2 @@
 # Proposed items (awaiting review)
 # Promote the ones you want with: python scripts/promote.py [slug ...]
-
-- [ ] `qpcr-outlier-detection` Add Grubbs' outlier detection for qPCR technical replicates — Cq outliers from pipetting or amplification artifacts inflate SD and distort ΔΔCq fold changes. Grubbs' test can flag or exclude them before computing means. | proposed
-- [ ] `bioburden-spc-capability` Add bioburden process capability (Cp/Cpk) against alert/action limits — SPC charts detect violations but don't quantify how well the process stays within limits. Cpk gives a single number for trend reviews and validation reports. | proposed
-- [ ] `growth-curve-aic-model-selection` Add AIC/BIC model selection between logistic and Gompertz — R² alone favors the more flexible model; AIC/BIC provides an objective, information-criterion-based choice for each well in growth-curve analysis. | proposed
-- [ ] `phylogeny-jukes-cantor` Add Jukes-Cantor distance correction to phylogeny — Neighbor-joining on raw p-distances underestimates evolutionary distances due to multiple substitutions. JC69 correction is a standard first-order fix for distance-based trees. | proposed
-- [ ] `sterility-membrane-filtration` Add membrane filtration sample-size calculation to sterility — USP <71> membrane filtration is a common sterility test method with different unit and volume requirements than direct inoculation. Labs need explicit sizing support. | proposed
-- [ ] `endotoxin-dose-units` Support unit-based dosing in endotoxin limit calculation — Many biologics are dosed in IU or units, not mg. Converting dose units lets the tool compute correct EU/unit or EU/mL limits per USP <85>. | proposed
-- [ ] `pipette-cal-uncertainty-budget` Add ISO 8655 uncertainty budget to pipette calibration — ISO 8655 requires an uncertainty statement alongside pass/fail. A combined and expanded uncertainty tells labs how reliable each volume measurement is. | proposed
-- [ ] `hemocytometer-chamber-depth` Support custom hemocytometer chamber depths — The hardcoded 10^4 factor assumes 0.1 mm depth. Chambers of 0.2 mm or custom slides need a corrected factor for accurate cells/mL calculations. | proposed
-- [ ] `hplc-sst-signal-to-noise` Add signal-to-noise calculation to HPLC SST — USP <621> requires S/N for some system suitability tests. Adding a noise column or blank injection lets the tool report S/N alongside plates and tailing. | proposed
-- [ ] `cfu-tntc-extrapolation` Add conservative TNTC extrapolation option to CFU calculator — When all plates are TNTC, the current tool errors out. Treating TNTC as the countable maximum yields a documented lower-bound estimate instead. | proposed
