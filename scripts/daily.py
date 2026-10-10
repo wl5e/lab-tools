@@ -166,6 +166,20 @@ def main(argv=None) -> int:
             commit_and_push(f"chore: {slug} already satisfied (no change needed)", slug)
             print(f"Marked {slug} done (already satisfied).")
             return 0
+        workflow_touched = [rel for rel, _ in written if rel.startswith(".github/workflows/")]
+        if workflow_touched:
+            print(
+                f"Attempt {attempt}: change touches {workflow_touched}; "
+                "reverting and retrying (GITHUB_TOKEN cannot push workflow files)."
+            )
+            feedback = (
+                "Do NOT modify or create any file under .github/workflows/ — the "
+                "automation's push token is rejected by GitHub for workflow files. "
+                "Re-implement the item without touching the workflows directory."
+            )
+            _revert(written)
+            written = []
+            continue
         # `git diff` ignores untracked files, so a change that only *adds* a
         # new file would look like "no change". Use `git status --porcelain` to
         # catch created, modified and untracked paths.
