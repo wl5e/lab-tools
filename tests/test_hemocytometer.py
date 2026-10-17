@@ -134,3 +134,25 @@ class TestDilutionVolumes:
         cc = CellCounter(10, 0, 4)
         with pytest.raises(ValueError, match="positive"):
             cc.dilution_volumes(-100000, 5.0)
+
+
+def test_chamber_depth_scales_cells_per_ml():
+    shallow = CellCounter(100, 0, 4, 1.0, 1e4).cells_per_ml
+    deep = CellCounter(100, 0, 4, 1.0, 2e4).cells_per_ml
+    assert deep == 2 * shallow
+
+
+def test_chamber_depth_cli_flag(capsys):
+    from lab_tools.lab_ops.hemocytometer import main
+
+    assert main(["count", "--live", "100", "--squares", "4", "--chamber-depth", "0.2"]) == 0
+    out = capsys.readouterr().out
+    assert "500,000" in out
+
+
+def test_chamber_factor_cli_flag(capsys):
+    from lab_tools.lab_ops.hemocytometer import main
+
+    assert main(["count", "--live", "100", "--squares", "4", "--chamber-factor", "20000"]) == 0
+    out = capsys.readouterr().out
+    assert "500,000" in out

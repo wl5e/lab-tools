@@ -172,6 +172,12 @@ def print_count_results(cc: CellCounter, volume: Optional[float] = None):
             print(f"Note: {e}", file=sys.stderr)
 
 
+def _chamber_factor(args) -> float:
+    if args.chamber_factor is not None:
+        return args.chamber_factor
+    return args.chamber_depth * 1e5
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Hemocytometer Cell Counter – GMP-compliant cell counting and dilution calculator."
@@ -186,6 +192,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     count_parser.add_argument('--dead', type=int, default=0, help='Number of dead cells counted')
     count_parser.add_argument('--squares', type=int, default=4, help='Number of squares counted (default 4)')
     count_parser.add_argument('--dilution', type=float, default=1.0, help='Dilution factor (default 1.0)')
+    count_parser.add_argument('--chamber-depth', type=float, default=0.1, help='Chamber depth in mm (default 0.1)')
+    count_parser.add_argument('--chamber-factor', type=float, default=None, help='Chamber factor in cells/mL; overrides --chamber-depth')
     count_parser.add_argument('--volume', type=float, help='Original sample volume (mL) for total viable cells')
 
     # dilute command
@@ -194,6 +202,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     dil_parser.add_argument('--dead', type=int, default=0, help='Dead cells counted')
     dil_parser.add_argument('--squares', type=int, default=4, help='Number of squares counted')
     dil_parser.add_argument('--dilution', type=float, default=1.0, help='Dilution factor of counted sample')
+    dil_parser.add_argument('--chamber-depth', type=float, default=0.1, help='Chamber depth in mm (default 0.1)')
+    dil_parser.add_argument('--chamber-factor', type=float, default=None, help='Chamber factor in cells/mL; overrides --chamber-depth')
     dil_parser.add_argument('--target-conc', type=float, required=True, help='Target viable cells/mL')
     dil_parser.add_argument('--final-volume', type=float, required=True, help='Final desired volume (mL)')
 
@@ -203,6 +213,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     vol_parser.add_argument('--dead', type=int, default=0, help='Dead cells counted')
     vol_parser.add_argument('--squares', type=int, default=4, help='Number of squares counted')
     vol_parser.add_argument('--dilution', type=float, default=1.0, help='Dilution factor')
+    vol_parser.add_argument('--chamber-depth', type=float, default=0.1, help='Chamber depth in mm (default 0.1)')
+    vol_parser.add_argument('--chamber-factor', type=float, default=None, help='Chamber factor in cells/mL; overrides --chamber-depth')
     vol_parser.add_argument('--desired-cells', type=float, required=True, help='Desired number of viable cells')
 
     args = parser.parse_args(argv)
@@ -224,11 +236,11 @@ def main(argv: Optional[List[str]] = None) -> int:
                 squares = args.squares
                 dilution = args.dilution
 
-            cc = CellCounter(live, dead, squares, dilution)
+            cc = CellCounter(live, dead, squares, dilution, _chamber_factor(args))
             print_count_results(cc, args.volume)
 
         elif args.command == 'dilute':
-            cc = CellCounter(args.live, args.dead, args.squares, args.dilution)
+            cc = CellCounter(args.live, args.dead, args.squares, args.dilution, _chamber_factor(args))
             v_sample, v_diluent = cc.dilution_volumes(
                 args.target_conc, args.final_volume
             )
@@ -241,7 +253,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             print_table(rows, ["Parameter", "Value"])
 
         elif args.command == 'volume':
-            cc = CellCounter(args.live, args.dead, args.squares, args.dilution)
+            cc = CellCounter(args.live, args.dead, args.squares, args.dilution, _chamber_factor(args))
             vol = cc.volume_for_cells(args.desired_cells)
             if vol == float('inf'):
                 print("Cannot obtain desired cells: no viable cells in sample.")
