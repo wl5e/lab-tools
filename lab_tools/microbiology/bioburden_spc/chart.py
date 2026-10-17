@@ -2,6 +2,7 @@
 """Bioburden I-MR control chart generator with Western Electric rules."""
 import csv
 import sys
+import json
 from statistics import mean
 import math
 
@@ -250,6 +251,7 @@ def main(argv=None) -> int:
     parser.add_argument('--date-col', default='date', help='Column name for dates (default: date)')
     parser.add_argument('--value-col', default='bioburden', help='Column name for bioburden values (default: bioburden)')
     parser.add_argument('--no-chart', action='store_true', help='Output statistics only, no ASCII charts')
+    parser.add_argument('--json', action='store_true', help='Output limits, moving ranges and violations as JSON')
     args = parser.parse_args(argv)
 
     try:
@@ -264,6 +266,30 @@ def main(argv=None) -> int:
 
     limits = compute_individuals_limits(values)
     violations = detect_violations(dates, values, limits)
+
+    if args.json:
+        output = {
+            'limits': {
+                'xbar': limits['xbar'],
+                'avg_mr': limits['avg_mr'],
+                'sigma': limits['sigma'],
+                'ucl_x': limits['ucl_x'],
+                'lcl_x': limits['lcl_x'],
+                'ucl_mr': limits['ucl_mr'],
+                'lcl_mr': limits['lcl_mr'],
+                'ucl1': limits['ucl1'],
+                'lcl1': limits['lcl1'],
+                'ucl2': limits['ucl2'],
+                'lcl2': limits['lcl2'],
+            },
+            'moving_ranges': limits['moving_ranges'],
+            'violations': [
+                {'point_index': idx, 'message': msg}
+                for idx, msg in violations
+            ],
+        }
+        print(json.dumps(output, indent=2))
+        return 0
 
     if not args.no_chart:
         print("--- Individual Values (I) Chart ---")

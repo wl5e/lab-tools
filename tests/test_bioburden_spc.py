@@ -1,7 +1,8 @@
+import json
 import os
 import tempfile
 import pytest
-from lab_tools.microbiology.bioburden_spc.chart import load_data, compute_individuals_limits, detect_violations, format_individual_chart
+from lab_tools.microbiology.bioburden_spc.chart import load_data, compute_individuals_limits, detect_violations, format_individual_chart, main
 
 @pytest.fixture
 def sample_csv():
@@ -104,3 +105,19 @@ def test_format_individual_chart():
     assert '*' in chart
     assert 'X' in chart  # point 2 marked
     assert 'Mean: 5.00' in chart
+
+def test_json_output(sample_csv, capsys):
+    rc = main([sample_csv, '--json'])
+    assert rc == 0
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert 'limits' in data
+    assert 'moving_ranges' in data
+    assert 'violations' in data
+    for key in ('xbar', 'avg_mr', 'sigma', 'ucl_x', 'lcl_x', 'ucl_mr', 'lcl_mr', 'ucl1', 'lcl1', 'ucl2', 'lcl2'):
+        assert key in data['limits']
+    assert len(data['moving_ranges']) == 9
+    assert isinstance(data['violations'], list)
+    for item in data['violations']:
+        assert 'point_index' in item
+        assert 'message' in item
