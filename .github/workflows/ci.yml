@@ -14,6 +14,8 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install
-        run: pip install -e . pytest
+        run: pip install -e ".[test]"
+      - name: Validate backlog
+        run: python scripts/backlog.py --check
       - name: Tests
         run: python -m pytest -q

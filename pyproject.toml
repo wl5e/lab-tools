@@ -16,6 +16,9 @@ dependencies = [
     "pandas>=2.0",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
 [project.scripts]
 lab-tools = "lab_tools.cli:main"
 

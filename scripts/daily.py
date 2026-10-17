@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 """Daily LLM-driven increment for lab-tools.
 
-Reads the first not-yet-done item in ``BACKLOG.md``, implements it via DeepSeek
-(see ``llm.py``), runs the full test suite, and — only if every test is green —
-checks the item off and commits. A commit is therefore *only* made when the
-change is real and verified; there is no filler.
+Reads the first open item in ``BACKLOG.md``, implements it (deterministic
+handler or DeepSeek), and commits only when the change is real and verified:
 
-A change that stays green is additionally reviewed by a **JEV pertinence gate**
-(see ``jev.py``) when ``TYPESAFE_API_KEY`` is set: JEV scores whether the change
-is a genuine, well-scoped implementation rather than slop, and a confident
-rejection sends the item back for another attempt. The gate fails open if JEV
-is unreachable, so an outage never blocks the daily stream.
+- at least one file changed;
+- the local scope gate passes (<= 3 files, a test when production code changes,
+  <= 150 changed lines);
+- the full test suite is green.
+
+An item that fails three attempts is moved to ``BACKLOG.blocked.md`` and the
+run tries the next item (up to ``MAX_ITEMS`` per run). There is deliberately no
+"skip" commit: the repository only records work that actually shipped.
 
 Modes:
-    --dry-run   print the plan without touching anything
+    --dry-run   print the next items without touching anything
     --apply     apply the change and run tests, but do not commit (local check)
     (default)   apply + test + commit + push (used by GitHub Actions)
 """
@@ -25,24 +26,41 @@ import os
 import re
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BACKLOG = ROOT / "BACKLOG.md"
+BLOCKED = ROOT / "BACKLOG.blocked.md"
+
+MAX_ITEMS = 3
+MAX_FILES = 3
+MAX_DIFF_LINES = 150
 
 _ITEM_RE = re.compile(r"^- \[ \] `([^`]+)` (.*?)\s*\|\s*handler:\s*(\w*)\s*$")
+_IGNORED_PREFIXES = ("BACKLOG", ".pytest_cache", "__pycache__")
+
+# Deterministic handlers, registered by the name used in ``| handler: ...``.
+# Handlers take no arguments, edit the working tree and return a commit subject.
+HANDLERS = {}
 
 
 def _run(cmd, **kwargs):
     return subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, **kwargs)
 
 
-def next_item():
+def open_items():
+    items = []
     for line in BACKLOG.read_text(encoding="utf-8").splitlines():
         m = _ITEM_RE.match(line)
         if m:
-            return m.group(1), m.group(2), m.group(3)
-    return None
+            items.append((m.group(1), m.group(2), m.group(3)))
+    return items
+
+
+def next_item():
+    items = open_items()
+    return items[0] if items else None
 
 
 def mark_done(slug: str) -> None:
@@ -53,6 +71,31 @@ def mark_done(slug: str) -> None:
             lines[i] = line.replace("- [ ]", "- [x]", 1)
             break
     BACKLOG.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def block_item(slug: str, title: str, reason: str) -> None:
+    """Move an item out of the active queue, with an audit trail."""
+    lines = BACKLOG.read_text(encoding="utf-8").splitlines()
+    kept = []
+    for line in lines:
+        m = _ITEM_RE.match(line)
+        if m and m.group(1) == slug:
+            continue
+        kept.append(line)
+    BACKLOG.write_text("\n".join(kept).rstrip() + "\n", encoding="utf-8")
+
+    if not BLOCKED.exists():
+        BLOCKED.write_text(
+            "# Blocked items\n\n"
+            "Moved here after three failed attempts. Fix the item (or split it)\n"
+            "and move it back to BACKLOG.md to retry.\n\n",
+            encoding="utf-8",
+        )
+    with BLOCKED.open("a", encoding="utf-8") as handle:
+        handle.write(
+            f"- `{slug}` {title}\n"
+            f"  blocked: {reason} ({date.today().isoformat()})\n"
+        )
 
 
 def run_tests():
@@ -70,23 +113,63 @@ def _revert(written) -> None:
                 p.unlink()
     else:
         _run(["git", "checkout", "--", "."])
+        _run(["git", "clean", "-fd", "--", "tests"])
 
 
-def commit_and_push(subject: str, slug: str) -> None:
+def _changed_paths():
+    tracked = _run(["git", "diff", "--name-only"]).stdout.splitlines()
+    untracked = _run(["git", "ls-files", "--others", "--exclude-standard"]).stdout.splitlines()
+    paths = [p for p in dict.fromkeys(tracked + untracked) if p]
+    return [p for p in paths if not p.startswith(_IGNORED_PREFIXES)]
+
+
+def _diff_lines() -> int:
+    total = 0
+    for line in _run(["git", "diff", "--numstat"]).stdout.splitlines():
+        parts = line.split("\t")
+        for value in parts[:2]:
+            if value.isdigit():
+                total += int(value)
+    for rel in _run(["git", "ls-files", "--others", "--exclude-standard"]).stdout.splitlines():
+        if rel.startswith(_IGNORED_PREFIXES):
+            continue
+        path = ROOT / rel
+        if path.is_file():
+            total += len(path.read_text(encoding="utf-8", errors="ignore").splitlines())
+    return total
+
+
+def _local_gate(written) -> tuple[bool, str]:
+    """Free, deterministic scope gate."""
+    paths = [rel for rel, _ in written] if written else _changed_paths()
+    if not paths:
+        return False, "no file changed"
+    if len(paths) > MAX_FILES:
+        return False, f"{len(paths)} files changed (max {MAX_FILES})"
+    has_test = any(rel.startswith("tests/") for rel in paths)
+    has_production = any(
+        rel.startswith("lab_tools/") and rel.endswith(".py") for rel in paths
+    )
+    if has_production and not has_test:
+        return False, "production code changed without a test"
+    changed = _diff_lines()
+    if changed > MAX_DIFF_LINES:
+        return False, f"{changed} changed lines (max {MAX_DIFF_LINES})"
+    return True, ""
+
+
+def _commit_and_push(subject: str, body: str, add_args) -> None:
     env = {**os.environ}
     name = env.get("GIT_AUTHOR_NAME", "Collins Amatu Gorgerat")
     email = env.get("GIT_AUTHOR_EMAIL", "133529715+wl5e@users.noreply.github.com")
     _run(["git", "config", "user.name", name])
     _run(["git", "config", "user.email", email])
-    _run(["git", "add", "-A"])
-    body = f"Backlog item: {slug}\n\nAutomated daily increment — test suite green."
+    _run(["git", "add", *add_args])
     res = _run(["git", "commit", "-m", subject, "-m", body])
     if res.returncode != 0:
         raise RuntimeError(f"git commit failed: {res.stderr.strip()}")
     push = _run(["git", "push"])
     if push.returncode != 0:
-        # Surface the error instead of silently dropping the commit, and retry
-        # once after rebasing in case main advanced since checkout.
         print(f"git push failed: {push.stderr.strip()}; rebasing and retrying.")
         rebase = _run(["git", "pull", "--rebase"])
         if rebase.returncode != 0:
@@ -96,76 +179,69 @@ def commit_and_push(subject: str, slug: str) -> None:
         raise RuntimeError(f"git push failed after retry: {push.stderr.strip()}")
 
 
-def _diff_for(written) -> str:
-    """Compact before/after of the files in ``written`` (list of ``(rel, existed)``)."""
-    rels = [rel for rel, _ in written]
-    parts = []
-    diff = _run(["git", "diff", "--", *rels]).stdout
-    if diff.strip():
-        parts.append(diff)
-    for rel, existed in written:
-        if not existed:
-            parts.append(f"### NEW FILE {rel}\n" + (ROOT / rel).read_text(encoding="utf-8"))
-    return "\n".join(parts)
+def commit_and_push(subject: str, slug: str) -> None:
+    body = f"Backlog item: {slug}\n\nAutomated daily increment — test suite green."
+    _commit_and_push(subject, body, ["-A"])
 
 
-def _jev_gate(slug: str, title: str, written) -> str:
-    """Return ``'accept'`` or ``'reject'`` from the JEV pertinence gate.
-
-    Opt-in: skipped when ``TYPESAFE_API_KEY`` is unset. Fails open — if JEV
-    errors, the change is accepted so an outage never blocks the daily stream.
-    """
-    if not os.environ.get("TYPESAFE_API_KEY"):
-        print("TYPESAFE_API_KEY not set; skipping JEV pertinence gate.")
-        return "accept"
-    import jev
-    try:
-        accepted, prob = jev.is_pertinent(slug, title, _diff_for(written))
-    except Exception as exc:  # noqa: BLE001 - fail open on gate outage
-        print(f"JEV gate unavailable ({exc}); accepting change.")
-        return "accept"
-    print(f"JEV pertinence: {prob:.2f} -> {'accept' if accepted else 'reject'}")
-    return "accept" if accepted else "reject"
+def commit_blocked(slugs) -> None:
+    body = "Blocked items moved to BACKLOG.blocked.md.\n\n" + "\n".join(
+        f"- {slug}" for slug in slugs
+    )
+    _commit_and_push(
+        f"chore: block {len(slugs)} backlog item(s) after 3 failed attempts",
+        body,
+        ["BACKLOG.md", "BACKLOG.blocked.md"],
+    )
 
 
-def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dry-run", action="store_true", help="print the plan only")
-    parser.add_argument("--apply", action="store_true", help="apply + test, no commit")
-    args = parser.parse_args(argv)
-
-    item = next_item()
-    if item is None:
-        print("No undone backlog item. Nothing to do.")
-        return 0
-
-    slug, title, _ = item
-    print(f"Selected backlog item: {slug}")
-
-    if args.dry_run:
-        print("Dry run — no changes made.")
-        return 0
-
-    if not os.environ.get("DEEPSEEK_API_KEY"):
-        print("DEEPSEEK_API_KEY not set; nothing to do.")
-        return 0
+def _attempt(slug: str, title: str, handler: str, apply_only: bool) -> tuple[bool, str]:
+    """Try one item. Returns (shipped, reason_if_not)."""
+    if handler:
+        fn = HANDLERS.get(handler)
+        if fn is None:
+            return False, f"unknown handler {handler!r}"
+        try:
+            subject = fn()
+        except Exception as exc:  # noqa: BLE001 - handlers are trusted but may drift
+            _revert([])
+            return False, f"handler failed: {exc}"
+        if not _changed_paths():
+            return False, "handler produced no change"
+        ok, reason = _local_gate([])
+        if not ok:
+            _revert([])
+            return False, reason
+        if run_tests().returncode != 0:
+            _revert([])
+            return False, "tests failed"
+        mark_done(slug)
+        if not apply_only:
+            commit_and_push(subject, slug)
+        return True, ""
 
     import llm
+
     written = []
     feedback = None
     for attempt in (1, 2, 3):
         try:
             subject, written = llm.implement(slug, title, feedback)
-        except Exception as exc:  # noqa: BLE001 - fail the day cleanly
+        except Exception as exc:  # noqa: BLE001 - fail the item cleanly
             print(f"LLM attempt {attempt} raised: {exc}")
             _revert(written)
-            return 1
+            return False, f"LLM error: {exc}"
+
         if not written:
-            # The item is already satisfied — check it off, no code change.
-            mark_done(slug)
-            commit_and_push(f"chore: {slug} already satisfied (no change needed)", slug)
-            print(f"Marked {slug} done (already satisfied).")
-            return 0
+            print(f"Attempt {attempt}: the model changed nothing; retrying.")
+            feedback = (
+                "You must change at least one file. There is no 'already satisfied' "
+                "answer: implement the item for real, with a test."
+            )
+            _revert(written)
+            written = []
+            continue
+
         workflow_touched = [rel for rel, _ in written if rel.startswith(".github/workflows/")]
         if workflow_touched:
             print(
@@ -180,13 +256,26 @@ def main(argv=None) -> int:
             _revert(written)
             written = []
             continue
-        # `git diff` ignores untracked files, so a change that only *adds* a
-        # new file would look like "no change". Use `git status --porcelain` to
-        # catch created, modified and untracked paths.
-        if not _run(["git", "status", "--porcelain"]).stdout.strip():
-            print("LLM produced no effective change; skipping (no commit).")
+
+        if not _changed_paths():
+            print("LLM produced no effective change; retrying.")
+            feedback = "Your files were identical to the current content. Make a real change."
             _revert(written)
-            return 1
+            written = []
+            continue
+
+        ok, reason = _local_gate(written)
+        if not ok:
+            print(f"Attempt {attempt}: local gate rejected the change: {reason}")
+            feedback = (
+                f"Your change was rejected by the local scope gate: {reason}. "
+                "Keep it to at most 3 files, add or update a test when you change "
+                "production code, and keep the diff under 150 lines."
+            )
+            _revert(written)
+            written = []
+            continue
+
         res = run_tests()
         if res.returncode != 0:
             print(f"Attempt {attempt}: tests failed; feeding output back and retrying.")
@@ -194,35 +283,53 @@ def main(argv=None) -> int:
             _revert(written)
             written = []
             continue
-        # Tests are green; run the JEV pertinence gate before committing so a
-        # change that stays green but is slop gets another attempt.
-        if _jev_gate(slug, title, written) == "reject":
-            print(f"Attempt {attempt}: JEV judged the change not pertinent; retrying.")
-            feedback = (
-                "Your change passed the tests but was judged NOT pertinent by a "
-                "review model (slop, trivial, or unrelated to the item). Re-implement "
-                "the item as a real, well-scoped improvement."
-            )
-            _revert(written)
-            written = []
-            continue
-        break
-    else:
-        # A hard item must not block the pipeline forever: check it off with a
-        # skip note so the next run advances to the following item.
+
         mark_done(slug)
-        commit_and_push(f"chore: skip {slug} (LLM could not produce a green, pertinent change)", slug)
-        print(f"Skipped {slug} after 3 failed attempts.")
+        if not apply_only:
+            commit_and_push(subject, slug)
+            print(f"Committed and pushed: {subject}")
+        else:
+            print("Tests green. (--apply: not committing.)")
+        return True, ""
+
+    return False, "3 attempts failed"
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--dry-run", action="store_true", help="print the plan only")
+    parser.add_argument("--apply", action="store_true", help="apply + test, no commit")
+    args = parser.parse_args(argv)
+
+    items = open_items()
+    if not items:
+        print("No undone backlog item. Nothing to do.")
         return 0
 
-    mark_done(slug)
-    if args.apply:
-        print("Tests green. (--apply: not committing.)")
+    if args.dry_run:
+        for slug, _, handler in items[:MAX_ITEMS]:
+            mode = f"handler:{handler}" if handler else "LLM"
+            print(f"- {slug} [{mode}]")
         return 0
 
-    commit_and_push(subject, slug)
-    print(f"Committed and pushed: {subject}")
-    return 0
+    if not os.environ.get("DEEPSEEK_API_KEY") and not any(h for _, _, h in items[:MAX_ITEMS]):
+        print("DEEPSEEK_API_KEY not set; nothing to do.")
+        return 0
+
+    blocked = []
+    for slug, title, handler in items[:MAX_ITEMS]:
+        print(f"Selected backlog item: {slug}")
+        shipped, reason = _attempt(slug, title, handler, args.apply)
+        if shipped:
+            return 0
+        print(f"Blocking {slug}: {reason}")
+        block_item(slug, title, reason)
+        blocked.append(slug)
+
+    if blocked and not args.apply:
+        commit_blocked(blocked)
+    print(f"No item shipped this run; blocked: {', '.join(blocked)}.")
+    return 1
 
 
 if __name__ == "__main__":

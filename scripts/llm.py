@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -28,6 +29,8 @@ from typing import Dict, List, Tuple
 ROOT = Path(__file__).resolve().parent.parent
 API_URL = "https://api.deepseek.com/chat/completions"
 DEFAULT_MODEL = "deepseek-v4-flash"
+MAX_TOKENS = 8000
+_RETRY_STATUS = {408, 429, 500, 502, 503, 504}
 
 # Always sent: a lightweight manifest so the model knows the package layout and
 # which tools exist, without the cost of every source file.
@@ -54,20 +57,26 @@ SYSTEM_PROMPT = (
     '  {"summary": "<conventional commit subject>",\n'
     '   "files": {"<relative/path>": "<full new file content>", ...}}\n'
     '- "files" holds the FULL new content of every file you create or change.\n'
-    "- If the item is already satisfied, return an empty files map and say so in summary."
+    "- You MUST change at least one file. There is no 'already satisfied' answer.\n"
+    "  If the item is genuinely impossible, return an empty files map with an\n"
+    "  explanation; the run treats that as a failure."
 )
 
-PROPOSE_PROMPT = (
-    "You are the maintainer of `lab-tools`, a library of small CLI tools for "
-    "pharmaceutical / microbiology / molecular-biology laboratory data. "
-    "Propose NEW backlog items that would genuinely improve it.\n"
-    "Requirements:\n"
-    "- Propose 10 items, each concrete and implementable in ONE focused change.\n"
-    "- Do NOT duplicate anything already in the backlog or already in the code.\n"
-    "- No trivial filler (comment edits, renames, cosmetic tweaks).\n"
-    "- Slugs are kebab-case.\n"
-    '- Return ONLY JSON: {"items": [{"slug": "...", "title": "...", "why": "..."}]}'
-)
+
+def _propose_prompt(count: int) -> str:
+    return (
+        "You are the maintainer of `lab-tools`, a library of small CLI tools for "
+        "pharmaceutical / microbiology / molecular-biology laboratory data. "
+        "Propose NEW backlog items that would genuinely improve it.\n"
+        "Requirements:\n"
+        f"- Propose {count} items, each concrete and implementable in ONE focused change.\n"
+        "- Do NOT duplicate anything already in the backlog, the proposed file, or the code.\n"
+        "- No trivial filler (comment edits, renames, cosmetic tweaks).\n"
+        "- Slugs are kebab-case.\n"
+        "- Each title MUST include: `Acceptance: <testable criterion>. "
+        "Demo: `<command>`. Files: <comma-separated paths, max 3>`.\n"
+        '- Return ONLY JSON: {"items": [{"slug": "...", "title": "...", "why": "..."}]}'
+    )
 
 
 def _index_tools() -> Dict[str, List[Path]]:
@@ -120,8 +129,11 @@ def _gather_context_full() -> str:
 
 
 def _gather_context_scoped(slug: str, description: str) -> str:
-    """Manifest + only the files of the tool(s) named by the item."""
+    """Manifest + README + only the files of the tool(s) named by the item."""
     paths = _manifest_paths()
+    readme = ROOT / "README.md"
+    if readme.exists() and readme not in paths:
+        paths.append(readme)
     tools = _index_tools()
     slug_compact = re.sub(r"[^a-z0-9]", "", slug.lower())
     desc = description.lower()
@@ -141,26 +153,40 @@ def _call(messages) -> str:
             "model": model,
             "messages": messages,
             "temperature": 0.2,
+            "max_tokens": MAX_TOKENS,
             "response_format": {"type": "json_object"},
         }
     ).encode("utf-8")
-    req = urllib.request.Request(
-        API_URL,
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=180) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise RuntimeError(f"DeepSeek HTTP {exc.code}: {exc.read().decode()[:300]}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"DeepSeek connection error: {exc.reason}") from exc
-    return data["choices"][0]["message"]["content"]
+
+    last_error = None
+    for attempt in range(4):
+        req = urllib.request.Request(
+            API_URL,
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            return data["choices"][0]["message"]["content"]
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode()[:300]
+            last_error = f"DeepSeek HTTP {exc.code}: {body}"
+            if exc.code in _RETRY_STATUS and attempt < 3:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise RuntimeError(last_error) from exc
+        except urllib.error.URLError as exc:
+            last_error = f"DeepSeek connection error: {exc.reason}"
+            if attempt < 3:
+                time.sleep(5 * (attempt + 1))
+                continue
+            raise RuntimeError(last_error) from exc
+    raise RuntimeError(last_error or "DeepSeek call failed")
 
 
 def _extract_json(content: str) -> dict:
@@ -237,13 +263,16 @@ def propose_items(count: int = 10):
     """Ask DeepSeek for ``count`` new backlog items, as (slug, title, why)."""
     context = _gather_context_full()
     backlog = (ROOT / "BACKLOG.md").read_text(encoding="utf-8")
+    proposed_path = ROOT / "BACKLOG.proposed.md"
+    proposed = proposed_path.read_text(encoding="utf-8") if proposed_path.exists() else ""
     user = (
         "Current repository files:\n\n" + context
         + "\n\nCurrent backlog (do not duplicate):\n\n" + backlog
+        + "\n\nAlready proposed (do not duplicate):\n\n" + proposed
     )
     content = _call(
         [
-            {"role": "system", "content": PROPOSE_PROMPT},
+            {"role": "system", "content": _propose_prompt(count)},
             {"role": "user", "content": user},
         ]
     )
