@@ -42,11 +42,115 @@ _IGNORED_PREFIXES = ("BACKLOG", ".pytest_cache", "__pycache__")
 
 # Deterministic handlers, registered by the name used in ``| handler: ...``.
 # Handlers take no arguments, edit the working tree and return a commit subject.
-HANDLERS = {}
 
 
 def _run(cmd, **kwargs):
     return subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, **kwargs)
+
+
+def _replace(path: Path, old: str, new: str, count: int = 1) -> None:
+    """Replace ``old`` with ``new`` in ``path``; fail loudly on anchor drift."""
+    text = path.read_text(encoding="utf-8")
+    found = text.count(old)
+    if found != count:
+        raise RuntimeError(
+            f"{path.name}: expected {count} occurrence(s) of anchor, found {found}"
+        )
+    path.write_text(text.replace(old, new), encoding="utf-8")
+
+
+def hemocytometer_chamber_depth() -> str:
+    """Expose the existing chamber factor through the hemocytometer CLI."""
+    module = ROOT / "lab_tools" / "lab_ops" / "hemocytometer.py"
+
+    flags = (
+        "    {parser}.add_argument('--chamber-depth', type=float, default=0.1, "
+        "help='Chamber depth in mm (default 0.1)')\n"
+        "    {parser}.add_argument('--chamber-factor', type=float, default=None, "
+        "help='Chamber factor in cells/mL; overrides --chamber-depth')\n"
+    )
+    _replace(
+        module,
+        "    count_parser.add_argument('--dilution', type=float, default=1.0, "
+        "help='Dilution factor (default 1.0)')\n",
+        "    count_parser.add_argument('--dilution', type=float, default=1.0, "
+        "help='Dilution factor (default 1.0)')\n"
+        + flags.format(parser="count_parser"),
+    )
+    _replace(
+        module,
+        "    dil_parser.add_argument('--dilution', type=float, default=1.0, "
+        "help='Dilution factor of counted sample')\n",
+        "    dil_parser.add_argument('--dilution', type=float, default=1.0, "
+        "help='Dilution factor of counted sample')\n"
+        + flags.format(parser="dil_parser"),
+    )
+    _replace(
+        module,
+        "    vol_parser.add_argument('--dilution', type=float, default=1.0, "
+        "help='Dilution factor')\n",
+        "    vol_parser.add_argument('--dilution', type=float, default=1.0, "
+        "help='Dilution factor')\n"
+        + flags.format(parser="vol_parser"),
+    )
+
+    _replace(
+        module,
+        "def main(argv: Optional[List[str]] = None) -> int:",
+        "def _chamber_factor(args) -> float:\n"
+        "    if args.chamber_factor is not None:\n"
+        "        return args.chamber_factor\n"
+        "    return args.chamber_depth * 1e5\n"
+        "\n"
+        "\n"
+        "def main(argv: Optional[List[str]] = None) -> int:",
+    )
+    _replace(
+        module,
+        "            cc = CellCounter(live, dead, squares, dilution)",
+        "            cc = CellCounter(live, dead, squares, dilution, _chamber_factor(args))",
+    )
+    _replace(
+        module,
+        "            cc = CellCounter(args.live, args.dead, args.squares, args.dilution)",
+        "            cc = CellCounter(args.live, args.dead, args.squares, args.dilution, _chamber_factor(args))",
+        count=2,
+    )
+
+    tests = ROOT / "tests" / "test_hemocytometer.py"
+    tests.write_text(
+        tests.read_text(encoding="utf-8")
+        + '''
+
+def test_chamber_depth_scales_cells_per_ml():
+    shallow = CellCounter(100, 0, 4, 1.0, 1e4).cells_per_ml
+    deep = CellCounter(100, 0, 4, 1.0, 2e4).cells_per_ml
+    assert deep == 2 * shallow
+
+
+def test_chamber_depth_cli_flag(capsys):
+    from lab_tools.lab_ops.hemocytometer import main
+
+    assert main(["count", "--live", "100", "--squares", "4", "--chamber-depth", "0.2"]) == 0
+    out = capsys.readouterr().out
+    assert "500,000" in out
+
+
+def test_chamber_factor_cli_flag(capsys):
+    from lab_tools.lab_ops.hemocytometer import main
+
+    assert main(["count", "--live", "100", "--squares", "4", "--chamber-factor", "20000"]) == 0
+    out = capsys.readouterr().out
+    assert "500,000" in out
+''',
+        encoding="utf-8",
+    )
+    return "feat(hemocytometer): expose chamber depth and factor in the CLI"
+
+
+HANDLERS = {
+    "hemocytometer_chamber_depth": hemocytometer_chamber_depth,
+}
 
 
 def open_items():
