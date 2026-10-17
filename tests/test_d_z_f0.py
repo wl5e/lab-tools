@@ -5,6 +5,7 @@ import math
 import pytest
 
 from lab_tools.sterility.d_z_f0 import (
+    compute_f0,
     compute_d_value,
     compute_z_value,
     linear_regression,
@@ -103,3 +104,12 @@ def test_compute_z_value_insufficient():
 def test_compute_z_value_length_mismatch():
     with pytest.raises(ValueError, match="same length"):
         compute_z_value([121, 131], [2.0])
+
+
+def test_compute_f0_reference_hold():
+    assert compute_f0([(121.1, 15.0)], z=10.0) == pytest.approx(15.0)
+
+
+def test_compute_f0_stepped_profile():
+    profile = [(121.1, 10.0), (131.1, 10.0)]
+    assert compute_f0(profile, z=10.0) == pytest.approx(110.0)

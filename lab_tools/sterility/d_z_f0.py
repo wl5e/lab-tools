@@ -146,6 +146,27 @@ def compute_z_value(
     return result
 
 
+def compute_f0(
+    profile: List[Tuple[float, float]],
+    z: float = 10.0,
+    reference_temperature: float = 121.1,
+) -> float:
+    """Compute F0 as the reference-temperature equivalent time.
+
+    ``profile`` is a sequence of ``(temperature_C, time_min)`` steps. F0 is
+    the sum of ``time_min * 10 ** ((temperature_C - 121.1) / z)`` over all
+    steps.
+    """
+    if z <= 0:
+        raise ValueError("z must be positive.")
+    total = 0.0
+    for temperature, time_min in profile:
+        if time_min < 0:
+            raise ValueError("durations must be non-negative.")
+        total += time_min * (10.0 ** ((temperature - reference_temperature) / z))
+    return total
+
+
 def read_csv(filename: str) -> List[dict]:
     """Read CSV with columns: temperature (optional), time, logN."""
     rows = []
