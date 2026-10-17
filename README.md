@@ -32,6 +32,41 @@ lab-tools cfu --help
 | Lab operations | `hemocytometer` | Cell count / viability |
 | | `pipette-cal` | Pipette calibration (ISO 8655) |
 
+## cfu — worked example
+
+A 1:10 serial dilution plated at 0.1 mL per plate with duplicate counts:
+
+| Dilution factor | Replicate A | Replicate B |
+|---:|---:|---:|
+| 0.01 (10⁻²) | 245 | 231 |
+| 0.001 (10⁻³) | 42 | 38 |
+
+All four counts are inside the USP/EP countable range of 30–300 CFU. For each plate:
+
+```
+CFU/mL = colony count / (volume plated in mL × dilution factor)
+245 / (0.1 × 0.01)  = 245,000 CFU/mL
+231 / (0.1 × 0.01)  = 231,000 CFU/mL
+ 42 / (0.1 × 0.001) = 420,000 CFU/mL
+ 38 / (0.1 × 0.001) = 380,000 CFU/mL
+```
+
+The reported mean across the four usable plates is:
+
+```
+(245,000 + 231,000 + 420,000 + 380,000) / 4 = 319,000 CFU/mL
+```
+
+The between-plate CV is about 29.82% (sample standard deviation ≈ 95,118 CFU/mL).
+
+Run the same calculation with the one-line command:
+
+```bash
+lab-tools cfu quick --counts 245,231,42,38 --dilutions 0.01,0.001 --replicates 2 --volume 0.1
+```
+
+The report prints `CFU/mL: 3.19e+05` and the same uncertainty and dilution details.
+
 ## Development
 
 ```bash
