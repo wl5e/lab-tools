@@ -9,6 +9,8 @@ from lab_tools.sterility.d_z_f0 import (
     compute_d_value,
     compute_z_value,
     linear_regression,
+    parse_profile_rows,
+    read_csv,
 )
 
 
@@ -113,3 +115,30 @@ def test_compute_f0_reference_hold():
 def test_compute_f0_stepped_profile():
     profile = [(121.1, 10.0), (131.1, 10.0)]
     assert compute_f0(profile, z=10.0) == pytest.approx(110.0)
+
+
+def test_parse_profile_rows_accepts_time_temperature_csv(tmp_path):
+    csv_path = tmp_path / "profile.csv"
+    csv_path.write_text("time,temperature" + chr(10) + "0,121.1" + chr(10) + "15,121.1" + chr(10))
+    rows = read_csv(str(csv_path))
+    profile = parse_profile_rows(rows)
+    assert profile == [(121.1, 0.0), (121.1, 15.0)]
+    assert compute_f0(profile, z=10.0) == pytest.approx(15.0)
+
+
+def test_parse_profile_rows_rejects_malformed_numeric():
+    rows = [{"time": "zero", "temperature": "121.1"}]
+    with pytest.raises(ValueError, match="Row 1: time and temperature must be numeric"):
+        parse_profile_rows(rows)
+
+
+def test_parse_profile_rows_rejects_missing_column():
+    rows = [{"time": "0"}]
+    with pytest.raises(ValueError, match="missing column 'temperature'"):
+        parse_profile_rows(rows)
+
+
+def test_parse_profile_rows_rejects_negative_time():
+    rows = [{"time": "-1", "temperature": "121.1"}]
+    with pytest.raises(ValueError, match="time must be non-negative"):
+        parse_profile_rows(rows)

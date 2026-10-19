@@ -177,6 +177,39 @@ def read_csv(filename: str) -> List[dict]:
     return rows
 
 
+def parse_profile_rows(rows: List[dict]) -> List[Tuple[float, float]]:
+    """Parse rows with columns ``time`` and ``temperature`` for F0.
+
+    Returns a list of ``(temperature_C, time_min)`` steps suitable for
+    :func:`compute_f0`. Raises ``ValueError`` with the row number for
+    malformed rows.
+    """
+    profile: List[Tuple[float, float]] = []
+    for i, row in enumerate(rows, start=1):
+        try:
+            time_raw = row["time"]
+            temp_raw = row["temperature"]
+        except KeyError as exc:
+            missing = exc.args[0]
+            raise ValueError(
+                f"Row {i}: missing column {missing!r}; expected 'time' and 'temperature'."
+            )
+        try:
+            time_min = float(time_raw)
+            temp_c = float(temp_raw)
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"Row {i}: time and temperature must be numeric "
+                f"(got {time_raw!r}, {temp_raw!r})."
+            )
+        if time_min < 0:
+            raise ValueError(f"Row {i}: time must be non-negative (got {time_min}).")
+        profile.append((temp_c, time_min))
+    if not profile:
+        raise ValueError("No data rows found in F0 profile.")
+    return profile
+
+
 def parse_data(rows: List[dict], require_temp: bool = False) -> Tuple[List[float], List[float], List[float]]:
     """Extract lists of times, logN, and optionally temperatures.
 
@@ -237,6 +270,22 @@ def _build_parser() -> argparse.ArgumentParser:
     z_parser.add_argument(
         "--dvalue-only", action="store_true",
         help="Only output per-temperature D-values (no Z-value)",
+    )
+
+    f_parser = subparsers.add_parser(
+        "f0", help="Compute F0 from a time-temperature profile CSV"
+    )
+    f_parser.add_argument(
+        "--input", required=True,
+        help="CSV file with columns: time, temperature",
+    )
+    f_parser.add_argument(
+        "--z", type=float, default=10.0,
+        help="Z-value in °C (default 10.0)",
+    )
+    f_parser.add_argument(
+        "--reference-temperature", type=float, default=121.1,
+        help="Reference temperature in °C (default 121.1)",
     )
 
     return parser
@@ -334,6 +383,22 @@ def main(argv: Optional[List[str]] = None) -> int:
                 print(f"Error computing Z-value: {e}", file=sys.stderr)
                 return 1
 
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+
+    elif args.command == "f0":
+        try:
+            profile = parse_profile_rows(rows)
+            f0 = compute_f0(
+                profile, z=args.z, reference_temperature=args.reference_temperature
+            )
+            print("F0 Calculation Results")
+            print("======================")
+            print(f"F0: {f0:.3f} minutes")
+            print(f"Z-value: {args.z} °C")
+            print(f"Reference temperature: {args.reference_temperature} °C")
+            print(f"Profile steps: {len(profile)}")
         except ValueError as e:
             print(f"Error: {e}", file=sys.stderr)
             return 1
