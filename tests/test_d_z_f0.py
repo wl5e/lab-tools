@@ -142,3 +142,14 @@ def test_parse_profile_rows_rejects_negative_time():
     rows = [{"time": "-1", "temperature": "121.1"}]
     with pytest.raises(ValueError, match="time must be non-negative"):
         parse_profile_rows(rows)
+
+
+def test_f0_cli_prints_f0(tmp_path, capsys):
+    csv_path = tmp_path / "profile.csv"
+    csv_path.write_text("time,temperature\n0,121.1\n15,121.1\n", encoding="utf-8")
+    from lab_tools.cli import main as cli_main
+
+    rc = cli_main(["d-z-f0", "f0", "--input", str(csv_path), "--z", "10"])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "F0: 15.000 minutes" in out
