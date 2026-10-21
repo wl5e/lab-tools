@@ -1,7 +1,34 @@
 import pytest
 import math
 
-from lab_tools.molecular.primers import wallace_tm, santalucia_tm, validate_sequence
+from lab_tools.molecular.primers import (
+    main,
+    reverse_complement,
+    santalucia_tm,
+    self_dimer_score,
+    validate_sequence,
+    wallace_tm,
+)
+
+
+class TestSelfDimerScore:
+    def test_fully_complementary_3_prime_end(self):
+        assert self_dimer_score("ACGTACGT") == 8
+
+    def test_partial_3_prime_end(self):
+        assert self_dimer_score("TTTTACGT") == 4
+
+    def test_non_complementary_3_prime_end_is_zero(self):
+        assert self_dimer_score("AAAA") == 0
+        assert self_dimer_score("CCCC") == 0
+
+    def test_reverse_complement(self):
+        assert reverse_complement("ACGT") == "ACGT"
+        assert reverse_complement("AAGC") == "GCTT"
+
+    def test_cli_check_dimer(self, capsys):
+        assert main(["check", "--seq", "ACGTACGT", "--dimer"]) == 0
+        assert "3' self-dimer score: 8" in capsys.readouterr().out
 
 
 class TestValidateSequence:

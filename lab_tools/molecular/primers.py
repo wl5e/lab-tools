@@ -48,6 +48,45 @@ def validate_sequence(seq: str) -> str:
     return seq
 
 
+_COMPLEMENT = str.maketrans("ACGT", "TGCA")
+
+
+def reverse_complement(sequence: str) -> str:
+    """Return the reverse complement of a DNA sequence (5'→3')."""
+    seq = validate_sequence(sequence)
+    return seq.translate(_COMPLEMENT)[::-1]
+
+
+def self_dimer_score(sequence: str) -> int:
+    """
+    Return the 3' self-complementarity score of a primer.
+
+    The score is the length of the longest contiguous run of Watson-Crick
+    complementary bases that can form between the primer's 3' end and any
+    region of an antiparallel copy of the same primer.  A fully
+    self-complementary primer scores ``len(sequence)``; a primer whose 3'
+    end cannot pair at all scores 0.
+    """
+    seq = validate_sequence(sequence)
+    rc = reverse_complement(seq)
+    n = len(seq)
+    best = 0
+    # rc[j] is the base pairing partner of seq[n - 1 - j]. Align the 3'
+    # terminal base of seq with each position in rc and walk inwards.
+    for j in range(n):
+        if seq[-1] != rc[j]:
+            continue
+        count = 0
+        i, k = n - 1, j
+        while i >= 0 and k >= 0 and seq[i] == rc[k]:
+            count += 1
+            i -= 1
+            k -= 1
+        if count > best:
+            best = count
+    return best
+
+
 def wallace_tm(sequence: str) -> float:
     """
     Calculate Ta using the Wallace rule: Tm = 2*(A+T) + 4*(G+C).
@@ -121,13 +160,25 @@ def santalucia_tm(sequence: str, primer_conc_nM: float = 500,
 
 
 def main(argv=None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    else:
+        argv = list(argv)
+    if argv and argv[0] == "check":
+        argv = argv[1:]
     parser = argparse.ArgumentParser(
         description="Calculate PCR primer annealing temperature using Wallace or SantaLucia methods."
     )
     parser.add_argument(
         "sequence",
+        nargs="?",
         type=str,
         help="DNA sequence (5' → 3'), e.g. ATGCATGCATGACGT"
+    )
+    parser.add_argument(
+        "--seq",
+        type=str,
+        help="DNA sequence (5' → 3'); alternative to the positional sequence"
     )
     parser.add_argument(
         "-m", "--method",
@@ -147,28 +198,40 @@ def main(argv=None) -> int:
         default=50.0,
         help="Monovalent cation concentration in mM (default: 50)"
     )
+    parser.add_argument(
+        "--dimer",
+        action="store_true",
+        help="Report the 3' self-complementarity (self-dimer) score"
+    )
 
     args = parser.parse_args(argv)
 
+    sequence = args.seq or args.sequence
+    if not sequence:
+        parser.error("a sequence is required (positional or --seq)")
+
     # Validate early to give a clean error
     try:
-        validate_sequence(args.sequence)
+        validate_sequence(sequence)
     except ValueError as e:
         parser.error(str(e))
 
     if args.method in ("wallace", "both"):
         try:
-            tm_w = wallace_tm(args.sequence)
+            tm_w = wallace_tm(sequence)
             print(f"Ta (Wallace)     : {tm_w:.1f} °C")
         except ValueError as e:
             print(f"Wallace error: {e}", file=sys.stderr)
 
     if args.method in ("santalucia", "both"):
         try:
-            tm_s = santalucia_tm(args.sequence, args.conc, args.salt)
+            tm_s = santalucia_tm(sequence, args.conc, args.salt)
             print(f"Ta (SantaLucia)  : {tm_s:.1f} °C")
         except ValueError as e:
             print(f"SantaLucia error: {e}", file=sys.stderr)
+
+    if args.dimer:
+        print(f"3' self-dimer score: {self_dimer_score(sequence)}")
 
     return 0
 
