@@ -22,7 +22,7 @@ re-admitted here, split into units that fit the 1–3 file rule.
 - [x] `dzf0-f0-parser` Parse a time-temperature CSV into profile rows for F0. Acceptance: a two-column CSV (time, temperature) is accepted, malformed rows raise a clear error, and a test covers both. Demo: `lab-tools d-z-f0 f0 --input profile.csv --z 10`. Files: lab_tools/sterility/d_z_f0.py, tests/test_d_z_f0.py | handler:
 - [x] `dzf0-f0-cli` Add the `f0` subcommand wired to the parser and core. Acceptance: `d-z-f0 f0 --input profile.csv --z 10` prints F0 and exit 0; the test invokes the CLI. Demo: `lab-tools d-z-f0 f0 --input profile.csv --z 10`. Files: lab_tools/sterility/d_z_f0.py, tests/test_d_z_f0.py | handler:
 - [x] `primers-self-dimer-score` Add a 3' self-complementarity score to the primers module. Acceptance: the score is maximal for a fully complementary 3' end, zero for a non-complementary end, and tested. Demo: `lab-tools primers check --seq ACGTACGT --dimer`. Files: lab_tools/molecular/primers.py, tests/test_primers.py | handler:
-- [ ] `primers-self-dimer-cli` Report the self-dimer score from the primers CLI. Acceptance: `--dimer` prints the score and a PASS/WARN call, covered by a capsys test. Demo: `lab-tools primers check --seq ACGTACGT --dimer`. Files: lab_tools/molecular/primers.py, tests/test_primers.py | handler:
+- [x] `primers-self-dimer-cli` Report the self-dimer score from the primers CLI. Acceptance: `--dimer` prints the score and a PASS/WARN call, covered by a capsys test. Demo: `lab-tools primers check --seq ACGTACGT --dimer`. Files: lab_tools/molecular/primers.py, tests/test_primers.py | handler:
 
 ## Month 1–2 — qPCR, ELISA, HPLC
 

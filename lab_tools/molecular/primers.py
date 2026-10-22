@@ -231,7 +231,9 @@ def main(argv=None) -> int:
             print(f"SantaLucia error: {e}", file=sys.stderr)
 
     if args.dimer:
-        print(f"3' self-dimer score: {self_dimer_score(sequence)}")
+        score = self_dimer_score(sequence)
+        call = "PASS" if score <= 4 else "WARN"
+        print(f"3' self-dimer score: {score} ({call})")
 
     return 0
 

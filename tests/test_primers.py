@@ -30,6 +30,16 @@ class TestSelfDimerScore:
         assert main(["check", "--seq", "ACGTACGT", "--dimer"]) == 0
         assert "3' self-dimer score: 8" in capsys.readouterr().out
 
+    def test_cli_dimer_pass(self, capsys):
+        assert main(["check", "--seq", "AAAA", "--dimer"]) == 0
+        out = capsys.readouterr().out
+        assert "3' self-dimer score: 0" in out
+        assert "PASS" in out
+
+    def test_cli_dimer_warn(self, capsys):
+        assert main(["check", "--seq", "ACGTACGT", "--dimer"]) == 0
+        out = capsys.readouterr().out
+        assert "WARN" in out
 
 class TestValidateSequence:
     def test_valid_upper(self):
