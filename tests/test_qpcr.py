@@ -118,6 +118,40 @@ def test_analyze_qpcr_full():
     assert round(r.sd_ddCq, 4) == 0.2828
 
 
+def test_analyze_qpcr_with_input_efficiency_column():
+    csv_content = """Sample,Gene,Cq,Efficiency
+WT,GAPDH,18.5,2.0
+WT,GAPDH,18.7,2.0
+WT,Target,22.1,3.0
+WT,Target,21.9,3.0
+KO,GAPDH,19.0,2.0
+KO,GAPDH,18.8,2.0
+KO,Target,20.5,3.0
+KO,Target,20.3,3.0"""
+    path = _write_temp_csv(csv_content)
+    try:
+        results = analyze_qpcr(path, 'GAPDH', 'WT', ',')
+    finally:
+        os.unlink(path)
+
+    assert len(results) == 1
+    # ddCq is unchanged (-1.9); with E=3 the fold change is 3^1.9.
+    assert round(results[0].fold_change, 4) == round(3 ** 1.9, 4)
+
+
+def test_analyze_qpcr_with_efficiency_file():
+    path = _write_temp_csv(SIMPLE_CSV)
+    eff_path = _write_temp_csv("Gene,Efficiency\nTarget,3.0\n")
+    try:
+        results = analyze_qpcr(path, 'GAPDH', 'WT', ',', eff_path)
+    finally:
+        os.unlink(path)
+        os.unlink(eff_path)
+
+    assert len(results) == 1
+    assert round(results[0].fold_change, 4) == round(3 ** 1.9, 4)
+
+
 def test_missing_ref_gene_in_sample():
     csv = "Sample,Gene,Cq\nCtrl,GAPDH,20\nCtrl,GOI,25\nTest,GOI,22"  # Test missing GAPDH
     path = _write_temp_csv(csv)

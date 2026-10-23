@@ -63,6 +63,65 @@ def _read_cq_data(csv_path: str, delimiter: str) -> Dict[str, Dict[str, List[flo
     return data
 
 
+def _read_input_efficiencies(csv_path: str, delimiter: str) -> Dict[str, float]:
+    """Read optional per-gene Efficiency values from the qPCR input CSV.
+
+    Returns an empty dict when the input has no Efficiency column.
+    """
+    efficiencies: Dict[str, float] = {}
+    with open(csv_path, 'r', newline='') as f:
+        reader = csv.DictReader(f, delimiter=delimiter)
+        if reader.fieldnames is None:
+            return efficiencies
+        fieldnames = [name.strip() for name in reader.fieldnames]
+        if 'Efficiency' not in fieldnames:
+            return efficiencies
+        for row_num, row in enumerate(reader, start=2):
+            gene = row.get('Gene', '').strip()
+            eff_str = row.get('Efficiency', '').strip()
+            if not gene or not eff_str:
+                continue
+            try:
+                efficiency = float(eff_str)
+            except (ValueError, TypeError):
+                print(f'Warning: row {row_num} Efficiency value "{eff_str}" is not numeric, using default 2.0.', file=sys.stderr)
+                continue
+            if efficiency <= 0:
+                print(f'Warning: row {row_num} Efficiency value must be positive, using default 2.0.', file=sys.stderr)
+                continue
+            efficiencies[gene] = efficiency
+    return efficiencies
+
+
+def _read_efficiency_file(csv_path: str, delimiter: str) -> Dict[str, float]:
+    """Read a Gene,Efficiency CSV and return gene -> amplification efficiency."""
+    efficiencies: Dict[str, float] = {}
+    with open(csv_path, 'r', newline='') as f:
+        reader = csv.DictReader(f, delimiter=delimiter)
+        if reader.fieldnames is None:
+            raise ValueError('Efficiency file appears to be empty or lacks a header row.')
+        fieldnames = [name.strip() for name in reader.fieldnames]
+        missing = {'Gene', 'Efficiency'} - set(fieldnames)
+        if missing:
+            raise ValueError(f'Missing required columns in efficiency file: {",".join(missing)}. Found columns: {",".join(fieldnames)}')
+        for row_num, row in enumerate(reader, start=2):
+            gene = row.get('Gene', '').strip()
+            eff_str = row.get('Efficiency', '').strip()
+            if not gene:
+                print(f'Warning: row {row_num} has empty Gene, skipping.', file=sys.stderr)
+                continue
+            try:
+                efficiency = float(eff_str)
+            except (ValueError, TypeError):
+                print(f'Warning: row {row_num} Efficiency value "{eff_str}" is not numeric, skipping.', file=sys.stderr)
+                continue
+            if efficiency <= 0:
+                print(f'Warning: row {row_num} Efficiency value must be positive, skipping.', file=sys.stderr)
+                continue
+            efficiencies[gene] = efficiency
+    return efficiencies
+
+
 def _compute_means_and_sds(data: Dict[str, Dict[str, List[float]]]) -> Dict[str, Dict[str, tuple]]:
     """For each (sample, gene) pair compute (mean, sample_sd)."""
     summary: Dict[str, Dict[str, tuple]] = defaultdict(dict)
@@ -89,7 +148,8 @@ def analyze_qpcr(
     csv_path: str,
     ref_gene: str,
     control_id: str,
-    delimiter: str = ','
+    delimiter: str = ',',
+    efficiencies_path: Optional[str] = None
 ) -> List[Result]:
     """Run ΔΔCq analysis and return list of Result rows.
 
@@ -99,6 +159,8 @@ def analyze_qpcr(
     ref_gene : name of the reference (housekeeping) gene.
     control_id : substring that uniquely identifies the control sample.
     delimiter : field delimiter in CSV.
+    efficiencies_path : optional CSV with columns Gene,Efficiency. Genes not
+        listed default to an amplification efficiency of 2.0.
 
     Returns
     -------
@@ -106,6 +168,9 @@ def analyze_qpcr(
     """
     # 1. Parse
     raw = _read_cq_data(csv_path, delimiter)
+    efficiencies = _read_input_efficiencies(csv_path, delimiter)
+    if efficiencies_path:
+        efficiencies.update(_read_efficiency_file(efficiencies_path, delimiter))
 
     # 2. Summary statistics
     means = _compute_means_and_sds(raw)
@@ -157,10 +222,11 @@ def analyze_qpcr(
             # Error propagation: SD_ddCq = sqrt(SD_dCq^2 + SD_dCq_control^2)
             sd_ddCq = math.sqrt(sd_dCq**2 + sd_ctl**2)
 
-            # Fold change 2^(-ddCq)
-            fc = math.pow(2, -ddCq)
-            fc_high = math.pow(2, -(ddCq - sd_ddCq))
-            fc_low = math.pow(2, -(ddCq + sd_ddCq))
+            # Fold change E^(-ddCq), E defaults to 2.0 for a perfect assay.
+            efficiency = efficiencies.get(gene, 2.0)
+            fc = math.pow(efficiency, -ddCq)
+            fc_high = math.pow(efficiency, -(ddCq - sd_ddCq))
+            fc_low = math.pow(efficiency, -(ddCq + sd_ddCq))
 
             # Retrieve raw mean/SD of the gene and ref for completeness
             mean_gene, sd_gene = means[sample][gene]
@@ -237,6 +303,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument('--control', default='control',
                         help='Substring that uniquely identifies the control sample (case-insensitive, default: control)')
     parser.add_argument('--sep', default=',', help='CSV delimiter (default: comma)')
+    parser.add_argument('-e', '--efficiencies', default=None,
+                        help='Optional CSV with columns Gene,Efficiency (default: 2.0 per target)')
     args = parser.parse_args(argv)
 
     try:
@@ -244,7 +312,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             csv_path=args.input,
             ref_gene=args.ref_gene,
             control_id=args.control,
-            delimiter=args.sep
+            delimiter=args.sep,
+            efficiencies_path=args.efficiencies
         )
     except Exception as e:
         print(f'Error: {e}', file=sys.stderr)
