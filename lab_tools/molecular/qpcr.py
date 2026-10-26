@@ -31,6 +31,48 @@ class Result(NamedTuple):
     fold_change_high: float
 
 
+class GrubbsResult(NamedTuple):
+    """Result of a two-sided Grubbs' test."""
+    n: int
+    statistic: float
+    critical_value: float
+    is_outlier: bool
+    outlier: Optional[float]
+
+
+def grubbs_test(values: List[float], alpha: float = 0.05) -> GrubbsResult:
+    """Two-sided Grubbs' test for one outlier among technical replicates."""
+    n = len(values)
+    if n < 3:
+        raise ValueError("Grubbs' test requires at least 3 values.")
+    if not 0 < alpha < 1:
+        raise ValueError('alpha must be between 0 and 1.')
+
+    mean = statistics.mean(values)
+    sd = statistics.stdev(values)
+    if sd == 0:
+        return GrubbsResult(n, 0.0, 0.0, False, None)
+
+    deviations = [abs(value - mean) for value in values]
+    index = max(range(n), key=deviations.__getitem__)
+    statistic = deviations[index] / sd
+
+    # Two-sided Grubbs critical value with t-distribution.
+    from scipy.stats import t as student_t
+    t_value = student_t.ppf(1.0 - alpha / (2.0 * n), n - 2)
+    critical_value = ((n - 1) / math.sqrt(n)) * math.sqrt(
+        t_value * t_value / (n - 2 + t_value * t_value)
+    )
+    is_outlier = statistic > critical_value
+    return GrubbsResult(
+        n,
+        statistic,
+        critical_value,
+        is_outlier,
+        values[index] if is_outlier else None,
+    )
+
+
 def _read_cq_data(csv_path: str, delimiter: str) -> Dict[str, Dict[str, List[float]]]:
     """Parse CSV and return raw Cq values organised as data[sample][gene] = list of floats."""
     data: Dict[str, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
@@ -303,11 +345,28 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument('--control', default='control',
                         help='Substring that uniquely identifies the control sample (case-insensitive, default: control)')
     parser.add_argument('--sep', default=',', help='CSV delimiter (default: comma)')
+    parser.add_argument('--outliers', choices=['grubbs'], default=None,
+                        help='Flag technical-replicate outliers (supported: grubbs)')
     parser.add_argument('-e', '--efficiencies', default=None,
                         help='Optional CSV with columns Gene,Efficiency (default: 2.0 per target)')
     args = parser.parse_args(argv)
 
     try:
+        if args.outliers == 'grubbs':
+            raw = _read_cq_data(args.input, args.sep)
+            for sample in sorted(raw):
+                for gene in sorted(raw[sample]):
+                    values = raw[sample][gene]
+                    if len(values) < 3:
+                        continue
+                    result = grubbs_test(values)
+                    if result.is_outlier:
+                        print(
+                            f'Grubbs outlier: sample={sample} gene={gene} '
+                            f'value={result.outlier:g} G={result.statistic:.4f} '
+                            f'G_crit={result.critical_value:.4f} (n={result.n})',
+                            file=sys.stderr,
+                        )
         results = analyze_qpcr(
             csv_path=args.input,
             ref_gene=args.ref_gene,

@@ -13,7 +13,8 @@ from lab_tools.molecular.qpcr import (
     _find_control_sample,
     analyze_qpcr,
     export_csv,
-    Result
+    Result,
+    grubbs_test
 )
 
 SIMPLE_CSV = """Sample,Gene,Cq
@@ -189,3 +190,21 @@ def test_export_csv_string_output():
     assert float(rows[0]['fold_change']) == 3.7325
     assert float(rows[0]['fold_change_low']) == 3.0
     assert float(rows[0]['fold_change_high']) == 4.5
+
+
+def test_grubbs_test_n3_flags_outlier():
+    result = grubbs_test([1.0, 1.0, 10.0])
+    assert result.n == 3
+    assert result.outlier == 10.0
+    assert result.is_outlier is True
+    assert result.statistic > result.critical_value
+    assert math.isclose(result.statistic, 2.0 / math.sqrt(3.0))
+
+
+def test_grubbs_test_n6_flags_outlier():
+    result = grubbs_test([10.0, 10.1, 9.9, 10.0, 10.1, 20.0])
+    assert result.n == 6
+    assert result.outlier == 20.0
+    assert result.is_outlier is True
+    assert result.statistic > result.critical_value
+    assert result.critical_value > 0.0
