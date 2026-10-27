@@ -91,3 +91,11 @@ def test_predict_unknowns(standard_data):
     assert len(result) == 2
     assert "Concentration" in result[0]
     assert float(result[0]["Concentration"]) > 0
+
+
+def test_4pl_covariance_shape(standard_data):
+    conc, od = standard_data
+    curve = StandardCurve(conc, od, model="4pl")
+    curve.fit()
+    assert curve.pcov is not None
+    assert curve.pcov.shape == (4, 4)

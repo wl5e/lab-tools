@@ -6,3 +6,5 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-10-26)
 - `qpcr-efficiency-output` Expose the corrected fold change in the Result and CSV output. Acceptance: the output gains an `efficiency_corrected` column without breaking existing columns; a test asserts the schema. Demo: `lab-tools qpcr --input qpcr.csv --efficiencies efficiencies.csv --format csv`. Files: lab_tools/molecular/qpcr.py, tests/test_qpcr.py
   blocked: 3 attempts failed (2026-10-26)
+- `qpcr-grubbs-output` Report flagged/excluded replicates in the qPCR output. Acceptance: the output lists flagged Cq values and the means are recomputed when `--outliers grubbs` is used; tested. Demo: `lab-tools qpcr --input qpcr.csv --outliers grubbs`. Files: lab_tools/molecular/qpcr.py, tests/test_qpcr.py
+  blocked: 3 attempts failed (2026-10-27)

@@ -55,6 +55,7 @@ class StandardCurve:
             raise ValueError("Concentrations must be positive (>0).")
 
         self.params: Optional[Dict[str, float]] = None
+        self.pcov: Optional[np.ndarray] = None
         self.r_squared: Optional[float] = None
         self.outliers: List[int] = []
         self._pred_fun = None
@@ -104,6 +105,7 @@ class StandardCurve:
             raise RuntimeError(f"4PL fitting failed: {e}")
 
         self.params = {"A": popt[0], "B": popt[1], "C": popt[2], "D": popt[3]}
+        self.pcov = pcov
         self._pred_fun = lambda xin: self._four_pl(np.asarray(xin), *popt)
         self._compute_r_squared(y, self._pred_fun(x))
 
