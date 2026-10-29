@@ -174,23 +174,27 @@ def process_data(
             'tr_count': len(tr_vals)
         })
 
-    # Compute resolution between adjacent peaks
+    # Compute resolution between adjacent peaks, averaged over every
+    # consecutive injection pair rather than a single replicate.
     for i in range(len(results) - 1):
-        p1 = peaks[sorted_names[i]][0]  # first replicate of peak i
-        p2 = peaks[sorted_names[i+1]][0]
-        if resolution_method == 'base':
-            if p1['res_width'] and p2['res_width']:
-                res = calc_resolution_base(mean_tr[sorted_names[i]], mean_tr[sorted_names[i+1]],
+        reps1 = peaks[sorted_names[i]]
+        reps2 = peaks[sorted_names[i + 1]]
+        n_pairs = min(len(reps1), len(reps2))
+        res_vals = []
+        for k in range(n_pairs):
+            p1 = reps1[k]
+            p2 = reps2[k]
+            if not (p1['res_width'] and p2['res_width']):
+                continue
+            if resolution_method == 'base':
+                res = calc_resolution_base(p1['tr'], p2['tr'],
                                            p1['res_width'], p2['res_width'])
             else:
-                res = float('nan')
-        else:
-            if p1['res_width'] and p2['res_width']:
-                res = calc_resolution_half(mean_tr[sorted_names[i]], mean_tr[sorted_names[i+1]],
+                res = calc_resolution_half(p1['tr'], p2['tr'],
                                            p1['res_width'], p2['res_width'])
-            else:
-                res = float('nan')
-        results[i]['resolution'] = res
+            if math.isfinite(res):
+                res_vals.append(res)
+        results[i]['resolution'] = statistics.mean(res_vals) if res_vals else float('nan')
 
     return results
 

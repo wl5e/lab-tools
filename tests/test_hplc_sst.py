@@ -168,3 +168,26 @@ def test_missing_required_column_exits():
     with pytest.raises(SystemExit):
         process_data(rows, method='base', tailing_method='asymmetry',
                      resolution_method='base', injection_col=None)
+
+INJECTION_RES_CSV = """peak_name,retention_time,width_base,width_half,asymmetry,injection
+Compound A,2.0,0.2,0.12,1.1,1
+Compound B,4.0,0.2,0.12,1.1,1
+Compound A,2.0,0.4,0.24,1.1,2
+Compound B,4.0,0.4,0.24,1.1,2
+"""
+
+
+def test_resolution_averaged_across_injections():
+    csv_file = _write_temp_csv(INJECTION_RES_CSV)
+    try:
+        rows = read_csv(str(csv_file))
+        results = process_data(rows, method='base', tailing_method='asymmetry',
+                               resolution_method='base', injection_col='injection')
+        assert len(results) == 2
+        expected = (
+            calc_resolution_base(2.0, 4.0, 0.2, 0.2)
+            + calc_resolution_base(2.0, 4.0, 0.4, 0.4)
+        ) / 2.0
+        assert math.isclose(results[0]['resolution'], expected, rel_tol=1e-4)
+    finally:
+        csv_file.unlink()
