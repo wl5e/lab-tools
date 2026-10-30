@@ -14,3 +14,5 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-10-28)
 - `hplc-per-injection-n` Average plate count across replicate injections. Acceptance: per-injection N is computed and the reported N is the mean, not replicate 0; tested on a 3-injection fixture. Demo: `lab-tools hplc-sst --input peaks.csv --injection-col injection`. Files: lab_tools/analytical/hplc_sst.py, tests/test_hplc_sst.py
   blocked: 3 attempts failed (2026-10-28)
+- `hplc-sst-signal-to-noise` Add a signal-to-noise column to HPLC SST. Acceptance: a noise input or blank-injection column yields S/N per peak; tested with a known ratio. Demo: `lab-tools hplc-sst --input peaks.csv --noise-col noise`. Files: lab_tools/analytical/hplc_sst.py, tests/test_hplc_sst.py
+  blocked: 3 attempts failed (2026-10-30)

@@ -18,6 +18,7 @@ from lab_tools.microbiology.cfu import (
     main,
     parse_csv_input,
     parse_json_input,
+    poisson_ci,
 )
 
 
@@ -292,3 +293,35 @@ class TestCLI:
         assert ret == 1
         captured = capsys.readouterr()
         assert "extension" in captured.err
+
+
+class TestPoissonCI:
+    """Tests for the exact Poisson confidence interval helper."""
+
+    def test_zero_count(self):
+        lo, hi = poisson_ci(0)
+        assert lo == 0.0
+        assert math.isclose(hi, 3.689, abs_tol=1e-2)
+
+    def test_one_count(self):
+        lo, hi = poisson_ci(1)
+        assert math.isclose(lo, 0.0253, abs_tol=1e-3)
+        assert math.isclose(hi, 5.572, abs_tol=1e-2)
+
+    def test_ten_count(self):
+        lo, hi = poisson_ci(10)
+        assert math.isclose(lo, 4.795, abs_tol=1e-2)
+        assert math.isclose(hi, 18.390, abs_tol=1e-2)
+
+    def test_hundred_count(self):
+        lo, hi = poisson_ci(100)
+        assert math.isclose(lo, 81.364, abs_tol=1e-1)
+        assert math.isclose(hi, 121.626, abs_tol=1e-1)
+
+    def test_negative_raises(self):
+        with pytest.raises(ValueError):
+            poisson_ci(-1)
+
+    def test_invalid_confidence_raises(self):
+        with pytest.raises(ValueError):
+            poisson_ci(5, confidence=1.5)

@@ -26,6 +26,42 @@ DEFAULT_COUNTABLE_RANGE: Tuple[int, int] = (30, 300)
 YEAST_MOLD_RANGE: Tuple[int, int] = (15, 150)
 
 
+def poisson_ci(
+    count: int, confidence: float = 0.95
+) -> Tuple[float, float]:
+    """Exact (Garwood) Poisson confidence interval for a colony count.
+
+    Returns the (lower, upper) bounds of the two-sided confidence interval
+    for the Poisson mean given an observed ``count``, using the relationship
+    between the Poisson and chi-square distributions::
+
+        lower = chi2.ppf(alpha/2, 2*count) / 2        (0 when count == 0)
+        upper = chi2.ppf(1 - alpha/2, 2*(count + 1)) / 2
+
+    Args:
+        count: Observed colony count (non-negative integer).
+        confidence: Confidence level (default 0.95 for a 95% interval).
+
+    Returns:
+        Tuple of (lower, upper) bounds.
+
+    Raises:
+        ValueError: If ``count`` is negative or ``confidence`` not in (0, 1).
+    """
+    if count < 0:
+        raise ValueError(f"Colony count must be non-negative, got {count}.")
+    if not 0 < confidence < 1:
+        raise ValueError(
+            f"Confidence must be between 0 and 1, got {confidence}."
+        )
+    from scipy.stats import chi2
+
+    alpha = 1.0 - confidence
+    lower = 0.0 if count == 0 else float(chi2.ppf(alpha / 2.0, 2 * count)) / 2.0
+    upper = float(chi2.ppf(1.0 - alpha / 2.0, 2 * (count + 1))) / 2.0
+    return (lower, upper)
+
+
 @dataclass
 class DilutionPlate:
     """Represents a single plate count at a given dilution level."""
