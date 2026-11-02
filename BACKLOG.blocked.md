@@ -16,3 +16,9 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-10-28)
 - `hplc-sst-signal-to-noise` Add a signal-to-noise column to HPLC SST. Acceptance: a noise input or blank-injection column yields S/N per peak; tested with a known ratio. Demo: `lab-tools hplc-sst --input peaks.csv --noise-col noise`. Files: lab_tools/analytical/hplc_sst.py, tests/test_hplc_sst.py
   blocked: 3 attempts failed (2026-10-30)
+- `cfu-ci-output` Report the CFU confidence interval in text and JSON. Acceptance: both outputs include lower/upper CFU/mL; tested. Demo: `lab-tools cfu calculate --counts 30 --dilution 1e-2 --volume 1 --ci`. Files: lab_tools/microbiology/cfu.py, tests/test_cfu.py
+  blocked: 3 attempts failed (2026-11-02)
+- `cfu-tntc-extrapolation` Add a conservative TNTC lower-bound mode. Acceptance: all-TNTC plates return a documented lower bound instead of an error, and a test covers it. Demo: `lab-tools cfu calculate --counts TNTC --dilution 1e-2 --volume 1 --tntc lower-bound`. Files: lab_tools/microbiology/cfu.py, tests/test_cfu.py
+  blocked: 3 attempts failed (2026-11-02)
+- `bioburden-cp` Compute process capability Cp against user alert/action limits. Acceptance: `--lsl` and `--usl` produce Cp from the within-subgroup sigma; tested numerically. Demo: `lab-tools bioburden-spc --input data.csv --lsl 0 --usl 100 --capability`. Files: lab_tools/microbiology/bioburden_spc/chart.py, tests/test_bioburden_spc.py
+  blocked: 3 attempts failed (2026-11-02)
