@@ -22,3 +22,9 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-11-02)
 - `bioburden-cp` Compute process capability Cp against user alert/action limits. Acceptance: `--lsl` and `--usl` produce Cp from the within-subgroup sigma; tested numerically. Demo: `lab-tools bioburden-spc --input data.csv --lsl 0 --usl 100 --capability`. Files: lab_tools/microbiology/bioburden_spc/chart.py, tests/test_bioburden_spc.py
   blocked: 3 attempts failed (2026-11-02)
+- `bioburden-cpk` Compute Cpk and report the limiting side. Acceptance: Cpk equals min(CPU, CPL) and the report names the limiting side; tested. Demo: `lab-tools bioburden-spc --input data.csv --lsl 0 --usl 100 --capability`. Files: lab_tools/microbiology/bioburden_spc/chart.py, tests/test_bioburden_spc.py
+  blocked: 3 attempts failed (2026-11-03)
+- `bioburden-alert-action-limits` Surface alert/action limits on the SPC chart. Acceptance: limits are accepted from CLI or CSV, drawn/labelled, and tested. Demo: `lab-tools bioburden-spc --input data.csv --alert 50 --action 80`. Files: lab_tools/microbiology/bioburden_spc/chart.py, tests/test_bioburden_spc.py
+  blocked: 3 attempts failed (2026-11-03)
+- `growth-aic` Add SSR and AIC to the growth-curve fit result. Acceptance: AIC is computed from SSR and parameter count, and a test checks a known fit. Demo: `lab-tools growth-curve fit --input od.csv`. Files: lab_tools/microbiology/growth_curve/analyzer.py, tests/test_growth_curve_analyzer.py
+  blocked: 3 attempts failed (2026-11-03)
