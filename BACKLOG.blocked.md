@@ -28,3 +28,9 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-11-03)
 - `growth-aic` Add SSR and AIC to the growth-curve fit result. Acceptance: AIC is computed from SSR and parameter count, and a test checks a known fit. Demo: `lab-tools growth-curve fit --input od.csv`. Files: lab_tools/microbiology/growth_curve/analyzer.py, tests/test_growth_curve_analyzer.py
   blocked: 3 attempts failed (2026-11-03)
+- `growth-bic` Add BIC and per-well model selection. Acceptance: BIC is reported and the selected model is the lower criterion; tested on synthetic logistic/Gompertz data. Demo: `lab-tools growth-curve fit --input od.csv --select bic`. Files: lab_tools/microbiology/growth_curve/analyzer.py, lab_tools/microbiology/growth_curve/main.py, tests/test_growth_curve_analyzer.py
+  blocked: 3 attempts failed (2026-11-04)
+- `growth-blank-subtraction` Subtract a blank well before fitting. Acceptance: `--blank` subtracts the per-timepoint blank and clamps negatives to zero; tested. Demo: `lab-tools growth-curve fit --input od.csv --blank BLANK`. Files: lab_tools/microbiology/growth_curve/analyzer.py, lab_tools/microbiology/growth_curve/main.py, tests/test_growth_curve_analyzer.py
+  blocked: 3 attempts failed (2026-11-04)
+- `phylogeny-jc69` Add the Jukes-Cantor distance correction. Acceptance: the corrected distance matches the JC69 formula and rejects p >= 0.75 with a clear error; tested. Demo: `lab-tools phylogeny nj --input distances.phy --distance-model jc69`. Files: lab_tools/molecular/phylogeny.py, tests/test_phylogeny.py
+  blocked: 3 attempts failed (2026-11-04)
