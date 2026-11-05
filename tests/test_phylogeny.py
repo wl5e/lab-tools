@@ -1,5 +1,7 @@
 import pytest
 import math
+import subprocess
+import sys
 from lab_tools.molecular.phylogeny import parse_phylip, neighbor_joining, to_newick, NJNode
 
 SIMPLE_LOWER = """\n4\nA     0\nB     5     0\nC     9    10     0\nD     9    10     8     0\n"""
@@ -91,3 +93,35 @@ def test_parse_comments_skipped():
     labels, mat = parse_phylip(text)
     assert labels == ["A", "B"]
     assert mat[0][1] == 0.5
+
+
+JUKES_MATRIX = """4
+A     0
+B   0.1     0
+C   0.2  0.25     0
+D   0.2  0.25  0.15     0
+"""
+
+
+def _run_phylogeny(tmp_path, text, extra_args=()):
+    path = tmp_path / "distances.phy"
+    path.write_text(text)
+    return subprocess.run(
+        [sys.executable, "-m", "lab_tools.cli", "phylogeny", str(path), *extra_args],
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_cli_default_distance_model_is_raw(tmp_path):
+    default = _run_phylogeny(tmp_path, SIMPLE_LOWER)
+    explicit = _run_phylogeny(tmp_path, SIMPLE_LOWER, ["--distance-model", "raw"])
+    assert default.returncode == 0, default.stderr
+    assert explicit.returncode == 0, explicit.stderr
+    assert default.stdout.strip() == explicit.stdout.strip()
+
+
+def test_cli_distance_model_jc69(tmp_path):
+    result = _run_phylogeny(tmp_path, JUKES_MATRIX, ["--distance-model", "jc69"])
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip()

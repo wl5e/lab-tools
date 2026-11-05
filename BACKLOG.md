@@ -34,7 +34,7 @@ re-admitted here, split into units that fit the 1–3 file rule.
 ## Month 2 — CFU, bioburden, growth curves
 
 - [x] `cfu-poisson-ci` Add a Poisson exact 95% confidence interval helper for counts. Acceptance: the interval matches known Poisson bounds for 0, 1, 10 and 100 colonies; unit-tested. Demo: `lab-tools cfu calculate --counts 30 --dilution 1e-2 --volume 1 --ci`. Files: lab_tools/microbiology/cfu.py, tests/test_cfu.py | handler:
-- [ ] `phylogeny-jc69-cli` Expose `--distance-model {raw,jc69}` on the phylogeny CLI. Acceptance: the flag is accepted, defaults to raw, and a subprocess test covers both. Demo: `lab-tools phylogeny nj --input distances.phy --distance-model jc69`. Files: lab_tools/molecular/phylogeny.py, tests/test_phylogeny.py | handler:
+- [x] `phylogeny-jc69-cli` Expose `--distance-model {raw,jc69}` on the phylogeny CLI. Acceptance: the flag is accepted, defaults to raw, and a subprocess test covers both. Demo: `lab-tools phylogeny nj --input distances.phy --distance-model jc69`. Files: lab_tools/molecular/phylogeny.py, tests/test_phylogeny.py | handler:
 - [ ] `phylogeny-bootstrap` Add bootstrap support values to neighbor-joining. Acceptance: `--bootstrap 100` annotates the Newick tree with support and is deterministic under a fixed seed; tested. Demo: `lab-tools phylogeny nj --input distances.phy --bootstrap 100 --seed 42`. Files: lab_tools/molecular/phylogeny.py, tests/test_phylogeny.py | handler:
 
 ## Month 2 — sterility, endotoxin, pipette, LOD/LOQ, media fill

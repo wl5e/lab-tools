@@ -2,6 +2,7 @@
 """Phylogenetic Tree CLI – Neighbor-Joining tree builder."""
 
 import argparse
+import math
 import sys
 from typing import Dict, List, Tuple, Optional
 
@@ -248,6 +249,32 @@ def ascii_tree(node: NJNode, prefix: str = "", is_last: bool = True) -> str:
     return result
 
 
+def jc69_correct(matrix: List[List[float]]) -> List[List[float]]:
+    """Apply the Jukes-Cantor (JC69) distance correction.
+
+    Converts raw p-distances ``d`` into corrected distances
+    ``d' = -3/4 * ln(1 - 4/3 * d)``.
+
+    Raises:
+        ValueError: if any distance is >= 0.75 (correction undefined).
+    """
+    n = len(matrix)
+    corrected = [[0.0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            p = matrix[i][j]
+            arg = 1.0 - (4.0 / 3.0) * p
+            if arg <= 0:
+                raise ValueError(
+                    f"JC69 undefined for distance {p} between taxa {i} and {j} "
+                    "(must be < 0.75)."
+                )
+            corrected[i][j] = -0.75 * math.log(arg)
+    return corrected
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Build a phylogenetic tree from a distance matrix using Neighbor-Joining."
@@ -265,6 +292,12 @@ def main(argv=None) -> int:
         action="store_true",
         help="Print an ASCII representation of the tree."
     )
+    parser.add_argument(
+        "--distance-model",
+        choices=["raw", "jc69"],
+        default="raw",
+        help="Distance correction model: 'raw' (default) or 'jc69' (Jukes-Cantor)."
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -279,6 +312,13 @@ def main(argv=None) -> int:
     except ValueError as e:
         print(f"Error parsing matrix: {e}", file=sys.stderr)
         return 1
+
+    if args.distance_model == "jc69":
+        try:
+            matrix = jc69_correct(matrix)
+        except ValueError as e:
+            print(f"Error applying JC69 correction: {e}", file=sys.stderr)
+            return 1
 
     tree = neighbor_joining(labels, matrix)
     newick_str = to_newick(tree) + ";"
