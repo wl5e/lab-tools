@@ -34,3 +34,9 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-11-04)
 - `phylogeny-jc69` Add the Jukes-Cantor distance correction. Acceptance: the corrected distance matches the JC69 formula and rejects p >= 0.75 with a clear error; tested. Demo: `lab-tools phylogeny nj --input distances.phy --distance-model jc69`. Files: lab_tools/molecular/phylogeny.py, tests/test_phylogeny.py
   blocked: 3 attempts failed (2026-11-04)
+- `phylogeny-bootstrap` Add bootstrap support values to neighbor-joining. Acceptance: `--bootstrap 100` annotates the Newick tree with support and is deterministic under a fixed seed; tested. Demo: `lab-tools phylogeny nj --input distances.phy --bootstrap 100 --seed 42`. Files: lab_tools/molecular/phylogeny.py, tests/test_phylogeny.py
+  blocked: 3 attempts failed (2026-11-06)
+- `sterility-membrane-sizing` Add membrane-filtration unit sizing per USP <71>. Acceptance: the membrane mode returns the documented minimum units for a given fill volume and is tested against the compendial table. Demo: `lab-tools sterility size --method membrane --fill-volume 100`. Files: lab_tools/sterility/sterility.py, tests/test_sterility.py
+  blocked: 3 attempts failed (2026-11-06)
+- `sterility-membrane-cli` Expose `--method {direct,membrane}` on the sterility CLI. Acceptance: both methods run, the default stays direct, and a subprocess test covers the flag. Demo: `lab-tools sterility size --method membrane --fill-volume 100`. Files: lab_tools/sterility/sterility.py, tests/test_sterility.py
+  blocked: 3 attempts failed (2026-11-06)
