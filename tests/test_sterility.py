@@ -5,6 +5,8 @@ import pytest
 from lab_tools.sterility.sterility import (
     calculate_sample_size,
     calculate_volume_per_container,
+    calculate_direct_inoculation_volume,
+    main,
 )
 
 
@@ -117,3 +119,50 @@ class TestVolumePerContainer:
     def test_negative_volume(self):
         with pytest.raises(ValueError):
             calculate_volume_per_container("liquid", -5)
+
+
+class TestDirectInoculation:
+    """Tests for calculate_direct_inoculation_volume and direct mode CLI."""
+
+    def test_direct_below_one_ml(self):
+        vol, desc = calculate_direct_inoculation_volume(0.5)
+        assert vol == 0.5
+        assert "entire" in desc
+
+    def test_direct_one_to_five_half(self):
+        vol, desc = calculate_direct_inoculation_volume(4)
+        assert vol == 2.0
+        assert "half" in desc
+
+    def test_direct_five_to_twenty(self):
+        vol, desc = calculate_direct_inoculation_volume(10)
+        assert vol == 2.0
+        assert "2 mL" in desc
+
+    def test_direct_twenty_or_more(self):
+        vol, desc = calculate_direct_inoculation_volume(100)
+        assert vol == 10.0
+        assert "10 mL" in desc
+
+    def test_direct_invalid_volume(self):
+        with pytest.raises(ValueError):
+            calculate_direct_inoculation_volume(0)
+
+    def test_cli_direct_reports_volume(self, capsys):
+        rc = main([
+            "size", "--method", "direct", "--fill-volume", "100",
+        ])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "direct inoculation" in out
+        assert "10.0 mL" in out
+
+    def test_cli_direct_with_batch_reports_units(self, capsys):
+        rc = main([
+            "--method", "direct", "--fill-volume", "100",
+            "--batch-size", "100", "--product-type", "liquid",
+        ])
+        assert rc == 0
+        out = capsys.readouterr().out
+        assert "Minimum number of units to test: 10" in out
+        assert "10.0 mL" in out

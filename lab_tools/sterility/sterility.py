@@ -99,16 +99,40 @@ def calculate_volume_per_container(product_type, container_volume_ml):
         )
 
 
+def calculate_direct_inoculation_volume(container_volume_ml):
+    """Minimum volume to withdraw per container for direct inoculation (USP <71>).
+
+    Args:
+        container_volume_ml (float): Nominal fill volume per container (mL).
+
+    Returns:
+        tuple: (volume_to_test_ml, description)
+
+    Raises:
+        ValueError: If container volume is not positive.
+    """
+    if container_volume_ml <= 0:
+        raise ValueError("Container volume must be positive.")
+
+    if container_volume_ml < 1:
+        return container_volume_ml, "entire contents"
+    if container_volume_ml <= 5:
+        return container_volume_ml / 2.0, "half the contents"
+    if container_volume_ml < 20:
+        return 2.0, "2 mL"
+    return 10.0, "10 mL"
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Calculate sterility test sample size per USP/EP."
     )
     parser.add_argument(
-        "--batch-size", type=int, required=True,
+        "--batch-size", type=int, default=None,
         help="Total number of units in the batch",
     )
     parser.add_argument(
-        "--product-type", choices=["liquid", "solid", "ophthalmic"], required=True,
+        "--product-type", choices=["liquid", "solid", "ophthalmic"], default=None,
         help="Type of product",
     )
     parser.add_argument(
@@ -116,10 +140,64 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Pharmacopeia (default: USP)",
     )
     parser.add_argument(
-        "--container-volume", type=float,
-        help="Container fill volume in mL (optional, for liquid/ophthalmic products)",
+        "--method", choices=["membrane", "direct"], default="membrane",
+        help="Sterility test method (default: membrane filtration)",
     )
+    parser.add_argument(
+        "--container-volume", "--fill-volume", dest="container_volume", type=float,
+        help="Container fill volume in mL (for liquid/ophthalmic products)",
+    )
+    if argv is None:
+        argv = sys.argv[1:]
+    else:
+        argv = list(argv)
+    if argv and argv[0] in ("size", "volume"):
+        argv = argv[1:]
     args = parser.parse_args(argv)
+
+    if args.method == "membrane":
+        if args.batch_size is None:
+            parser.error("the following arguments are required: --batch-size")
+        if args.product_type is None:
+            parser.error("the following arguments are required: --product-type")
+
+    if args.method == "direct":
+        if args.container_volume is None:
+            print(
+                "Error: --fill-volume is required for direct inoculation.",
+                file=sys.stderr,
+            )
+            return 1
+        try:
+            direct_vol, direct_desc = calculate_direct_inoculation_volume(
+                args.container_volume
+            )
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
+        print("Method: direct inoculation (USP <71>)")
+        sample_size = None
+        if args.batch_size is not None and args.product_type is not None:
+            try:
+                sample_size, warning = calculate_sample_size(
+                    args.batch_size, args.product_type, args.pharmacopeia
+                )
+            except ValueError as e:
+                print(f"Error: {e}", file=sys.stderr)
+                return 1
+            print(f"Minimum number of units to test: {sample_size}")
+            if warning:
+                print(f"WARNING: {warning}")
+        print(
+            f"Volume per container to test (USP <71> minimum): "
+            f"{direct_desc} ({direct_vol} mL)"
+        )
+        if sample_size is not None:
+            print(
+                f"Total volume needed for each medium: "
+                f"{direct_vol * sample_size} mL"
+            )
+        return 0
 
     # Validate batch size early
     if args.batch_size <= 0:
