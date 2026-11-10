@@ -4,6 +4,7 @@ import pytest
 
 from lab_tools.sterility.endotoxin.core import (
     calc_endotoxin_limit_product,
+    calc_endotoxin_limit_dose,
     calc_endotoxin_limit_volume,
     calc_mvd,
 )
@@ -84,3 +85,46 @@ class TestMVD:
     def test_negative_sensitivity_raises(self):
         with pytest.raises(ValueError, match="Lysate sensitivity.*positive"):
             calc_mvd(0.5, -0.125)
+
+
+class TestEndotoxinLimitDose:
+    def test_iu_dose_converts_via_potency(self):
+        result = calc_endotoxin_limit_dose(
+            dose=100.0, dose_unit="IU", potency_iu_per_mg=10.0, k=5.0
+        )
+        # 100 IU / 10 IU/mg = 10 mg; EL = K / 10 = 0.5 EU/mg
+        assert result["unit"] == "EU/mg"
+        assert result["endotoxin_limit"] == pytest.approx(0.5)
+        assert result["dose_unit"] == "IU"
+        assert result["potency_iu_per_mg"] == 10.0
+
+    def test_mg_dose_matches_product_limit(self):
+        dose_result = calc_endotoxin_limit_dose(dose=10.0, dose_unit="mg", k=5.0)
+        product_result = calc_endotoxin_limit_product(
+            dose_mg_per_kg_hour=10.0, k=5.0
+        )
+        assert dose_result["endotoxin_limit"] == product_result["endotoxin_limit"]
+        assert dose_result["unit"] == "EU/mg"
+
+    def test_iu_with_concentration_returns_eu_per_ml(self):
+        result = calc_endotoxin_limit_dose(
+            dose=100.0,
+            dose_unit="IU",
+            potency_iu_per_mg=10.0,
+            concentration_mg_per_ml=2.0,
+            k=5.0,
+        )
+        assert result["unit"] == "EU/mL"
+        assert result["endotoxin_limit"] == pytest.approx(1.0)
+
+    def test_iu_requires_potency(self):
+        with pytest.raises(ValueError, match="Potency"):
+            calc_endotoxin_limit_dose(dose=100.0, dose_unit="IU")
+
+    def test_invalid_dose_unit_raises(self):
+        with pytest.raises(ValueError, match="dose_unit"):
+            calc_endotoxin_limit_dose(dose=10.0, dose_unit="kg")
+
+    def test_zero_dose_raises(self):
+        with pytest.raises(ValueError, match="Maximum dose.*positive"):
+            calc_endotoxin_limit_dose(dose=0.0, dose_unit="mg")

@@ -64,6 +64,49 @@ def calc_endotoxin_limit_product(
         }
 
 
+def calc_endotoxin_limit_dose(
+    dose: float,
+    dose_unit: str = "mg",
+    potency_iu_per_mg: Optional[float] = None,
+    concentration_mg_per_ml: Optional[float] = None,
+    k: float = 5.0,
+) -> Dict[str, float]:
+    """
+    Calculate the endotoxin limit for a dose given in mass (mg) or activity (IU).
+
+    When ``dose_unit`` is ``"IU"`` the dose is converted to a mass dose using
+    the supplied potency factor (IU per mg of active substance).
+    """
+    if dose <= 0:
+        raise ValueError("Maximum dose must be positive.")
+    if k <= 0:
+        raise ValueError("K factor must be positive.")
+    if concentration_mg_per_ml is not None and concentration_mg_per_ml <= 0:
+        raise ValueError("Concentration must be positive if provided.")
+
+    if dose_unit == "IU":
+        if potency_iu_per_mg is None or potency_iu_per_mg <= 0:
+            raise ValueError(
+                "Potency (IU/mg) must be positive when dose unit is IU."
+            )
+        dose_mg = dose / potency_iu_per_mg
+    elif dose_unit == "mg":
+        dose_mg = dose
+    else:
+        raise ValueError("dose_unit must be 'mg' or 'IU'.")
+
+    result = calc_endotoxin_limit_product(
+        dose_mg_per_kg_hour=dose_mg,
+        concentration_mg_per_ml=concentration_mg_per_ml,
+        k=k,
+    )
+    result["dose"] = dose
+    result["dose_unit"] = dose_unit
+    if potency_iu_per_mg is not None:
+        result["potency_iu_per_mg"] = potency_iu_per_mg
+    return result
+
+
 def calc_endotoxin_limit_volume(
     dose_ml_per_kg_hour: float,
     k: float = 5.0,

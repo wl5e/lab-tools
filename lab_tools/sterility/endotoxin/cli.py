@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from lab_tools.sterility.endotoxin.core import (
     calc_endotoxin_limit_product,
+    calc_endotoxin_limit_dose,
     calc_endotoxin_limit_volume,
     calc_mvd,
 )
@@ -64,6 +65,35 @@ Examples:
         help="Lysate sensitivity (λ) in EU/mL",
     )
 
+    limit_parser = subparsers.add_parser(
+        "limit", help="Calculate endotoxin limit from a mass or activity dose"
+    )
+    limit_parser.add_argument(
+        "--dose", type=float, required=True, metavar="DOSE",
+        help="Max dose per kg body weight per hour",
+    )
+    limit_parser.add_argument(
+        "--dose-unit", type=str, default="mg", choices=["mg", "IU"],
+        help="Unit of the dose: mg or IU (default: mg)",
+    )
+    limit_parser.add_argument(
+        "--potency", type=float, default=None, metavar="IU/MG",
+        help="Potency in IU/mg (required when --dose-unit is IU)",
+    )
+    limit_parser.add_argument(
+        "--concentration", type=float, metavar="MG/ML",
+        help="Concentration of active substance (mg/mL); output in EU/mL",
+    )
+    limit_parser.add_argument(
+        "--k", type=float, default=None,
+        help="K factor in EU/kg (overrides route default)",
+    )
+    limit_parser.add_argument(
+        "--route", type=str, default="IV",
+        choices=["IV", "intrathecal"],
+        help="Administration route (default: IV)",
+    )
+
     args = parser.parse_args(argv)
 
     try:
@@ -100,6 +130,29 @@ Examples:
                 print(f"Max dose (volume): {result['dose_ml_per_kg_hour']} mL/kg/h")
             if result.get("concentration_mg_per_ml") is not None:
                 print(f"Concentration: {result['concentration_mg_per_ml']} mg/mL")
+
+        elif args.command == "limit":
+            if args.k is not None:
+                k = args.k
+            elif args.route == "IV":
+                k = 5.0
+            else:
+                k = 0.2
+
+            result = calc_endotoxin_limit_dose(
+                dose=args.dose,
+                dose_unit=args.dose_unit,
+                potency_iu_per_mg=args.potency,
+                concentration_mg_per_ml=args.concentration,
+                k=k,
+            )
+            print(f"Endotoxin Limit: {result['endotoxin_limit']} {result['unit']}")
+            print(f"K factor used: {result['K']} EU/kg")
+            if args.dose_unit == "IU":
+                print(f"Max dose: {args.dose} IU/kg/h")
+                print(f"Potency: {args.potency} IU/mg")
+            else:
+                print(f"Max dose: {args.dose} mg/kg/h")
 
         elif args.command == "mvd":
             mvd = calc_mvd(args.endotoxin_limit, args.lysate_sensitivity)
