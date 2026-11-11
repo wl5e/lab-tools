@@ -40,3 +40,9 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-11-06)
 - `sterility-membrane-cli` Expose `--method {direct,membrane}` on the sterility CLI. Acceptance: both methods run, the default stays direct, and a subprocess test covers the flag. Demo: `lab-tools sterility size --method membrane --fill-volume 100`. Files: lab_tools/sterility/sterility.py, tests/test_sterility.py
   blocked: 3 attempts failed (2026-11-06)
+- `endotoxin-eu-unit` Report the limit in EU/unit alongside EU/mg and EU/mL. Acceptance: the output includes the unit-correct limit and does not change mass-based results; tested. Demo: `lab-tools endotoxin limit --dose 100 --dose-unit IU --potency 10`. Files: lab_tools/sterility/endotoxin/core.py, lab_tools/sterility/endotoxin/cli.py, tests/test_endotoxin.py
+  blocked: 3 attempts failed (2026-11-11)
+- `endotoxin-device-limits` Add USP <161> device endotoxin limits. Acceptance: a device mode uses the device limit and extraction volume and is tested. Demo: `lab-tools endotoxin limit --device --extraction-volume 10`. Files: lab_tools/sterility/endotoxin/core.py, lab_tools/sterility/endotoxin/cli.py, tests/test_endotoxin.py
+  blocked: 3 attempts failed (2026-11-11)
+- `pipette-evap-io` Accept an optional evaporation-loss column in pipette calibration input. Acceptance: the column is optional, parsed as mg, and a test covers present/absent. Demo: `lab-tools pipette-cal --input pipette.csv --evaporation-col Evap_mg`. Files: lab_tools/lab_ops/pipette_cal/io.py, tests/test_pipette_cal_io.py
+  blocked: 3 attempts failed (2026-11-11)
