@@ -140,3 +140,21 @@ def test_analyze_calibration_too_few_measurements():
     ]
     results = analyze_calibration(raw)
     assert "FAIL" in results[0]["PassFail"]  # Error message embedded
+
+
+def test_analyze_calibration_applies_evaporation_before_conversion():
+    raw = [
+        {
+            'PipetteID': 'P20',
+            'NominalVolume': 20.0,
+            'TargetVolume': 20.0,
+            'Weight_mg': 18.0,
+            'Temperature_C': 20.0,
+            'Evap_mg': 2.0,
+        }
+        for _ in range(3)
+    ]
+    results = analyze_calibration(raw)
+    expected = mass_to_volume(20.0, 20.0)
+    assert results[0]['MeanVolume_ul'] == pytest.approx(expected, abs=0.001)
+    assert results[0]['PassFail'] == 'PASS'

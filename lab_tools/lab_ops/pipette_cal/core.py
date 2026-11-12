@@ -77,7 +77,11 @@ def _compute_group_stats(
 ) -> Dict:
     """Compute statistics for a single target volume group."""
     volumes = [
-        mass_to_volume(m["Weight_mg"], m["Temperature_C"], m.get("AirPressure_hPa", 1013.25))
+        mass_to_volume(
+            m["Weight_mg"] + m.get("Evap_mg", 0.0),
+            m["Temperature_C"],
+            m.get("AirPressure_hPa", 1013.25),
+        )
         for m in measurements
     ]
     n = len(volumes)
