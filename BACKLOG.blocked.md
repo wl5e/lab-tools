@@ -46,3 +46,5 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-11-11)
 - `pipette-evap-io` Accept an optional evaporation-loss column in pipette calibration input. Acceptance: the column is optional, parsed as mg, and a test covers present/absent. Demo: `lab-tools pipette-cal --input pipette.csv --evaporation-col Evap_mg`. Files: lab_tools/lab_ops/pipette_cal/io.py, tests/test_pipette_cal_io.py
   blocked: 3 attempts failed (2026-11-11)
+- `pipette-uncertainty-repeatability` Add repeatability and accuracy uncertainty components. Acceptance: the components are computed from the replicates and reported; tested against a hand calculation. Demo: `lab-tools pipette-cal --input pipette.csv --uncertainty`. Files: lab_tools/lab_ops/pipette_cal/core.py, tests/test_pipette_cal_core.py
+  blocked: 3 attempts failed (2026-11-13)

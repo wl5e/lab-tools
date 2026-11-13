@@ -6,6 +6,7 @@ from lab_tools.lab_ops.pipette_cal.core import (
     get_z_factor,
     mass_to_volume,
     get_tolerances,
+    combine_uncertainty,
     analyze_calibration,
 )
 
@@ -158,3 +159,28 @@ def test_analyze_calibration_applies_evaporation_before_conversion():
     expected = mass_to_volume(20.0, 20.0)
     assert results[0]['MeanVolume_ul'] == pytest.approx(expected, abs=0.001)
     assert results[0]['PassFail'] == 'PASS'
+
+
+def test_combine_uncertainty_root_sum_square_and_k2():
+    combined, expanded = combine_uncertainty([3.0, 4.0])
+    assert combined == pytest.approx(5.0)
+    assert expanded == pytest.approx(10.0)
+
+
+def test_analyze_calibration_reports_uncertainty():
+    raw = [
+        {
+            "PipetteID": "P20",
+            "NominalVolume": 20.0,
+            "TargetVolume": 20.0,
+            "Weight_mg": 20.0,
+            "Temperature_C": 20.0,
+        }
+        for _ in range(3)
+    ]
+    results = analyze_calibration(raw)
+    assert "U_combined_ul" in results[0]
+    assert "U_expanded_ul" in results[0]
+    assert results[0]["U_expanded_ul"] == pytest.approx(
+        2.0 * results[0]["U_combined_ul"], abs=1e-3
+    )

@@ -72,6 +72,15 @@ def get_tolerances(nominal_ul: float) -> Tuple[float, float]:
     raise ValueError(f"Nominal volume {nominal_ul} µL out of supported range (0.1–10000 µL).")
 
 
+_BALANCE_RESOLUTION_MG = 0.01  # mg, typical analytical balance resolution
+
+
+def combine_uncertainty(components: List[float], k: float = 2.0) -> Tuple[float, float]:
+    """Return combined (root-sum-square) and expanded (k-sigma) uncertainty."""
+    combined = math.sqrt(sum(c * c for c in components))
+    return combined, k * combined
+
+
 def _compute_group_stats(
     target: float, measurements: List[Dict]
 ) -> Dict:
@@ -100,11 +109,23 @@ def _compute_group_stats(
     std_dev = math.sqrt(variance)
     cv_pct = (std_dev / mean_vol) * 100.0
 
+    # Combined uncertainty: Type A (standard error of the mean) plus
+    # Type B balance-resolution contribution (rectangular distribution).
+    u_a = std_dev / math.sqrt(n)
+    z = get_z_factor(
+        measurements[0]["Temperature_C"],
+        measurements[0].get("AirPressure_hPa", 1013.25),
+    )
+    u_b = (_BALANCE_RESOLUTION_MG / math.sqrt(3.0)) * z
+    u_combined, u_expanded = combine_uncertainty([u_a, u_b])
+
     return {
         "MeanVolume_ul": round(mean_vol, 3),
         "Accuracy_pct": round(accuracy_pct, 2),
         "CV_pct": round(cv_pct, 2),
         "N": n,
+        "U_combined_ul": round(u_combined, 4),
+        "U_expanded_ul": round(u_expanded, 4),
     }
 
 
@@ -158,6 +179,8 @@ def analyze_calibration(raw_data: List[Dict]) -> List[Dict]:
                 "Accuracy_pct": stats["Accuracy_pct"],
                 "CV_pct": stats["CV_pct"],
                 "PassFail": status,
+                "U_combined_ul": stats["U_combined_ul"],
+                "U_expanded_ul": stats["U_expanded_ul"],
             }
         )
 

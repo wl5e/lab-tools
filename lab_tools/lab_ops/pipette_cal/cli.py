@@ -17,6 +17,11 @@ def main(argv=None) -> int:
     parser.add_argument(
         "--output", "-o", help="Path to output CSV file (default: stdout)"
     )
+    parser.add_argument(
+        "--uncertainty",
+        action="store_true",
+        help="Include combined and expanded (k=2) uncertainty columns.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -31,15 +36,24 @@ def main(argv=None) -> int:
 
     results = analyze_calibration(data)
 
-    out_lines = [
-        "PipetteID,NominalVolume,TargetVolume,N,MeanVolume_ul,Accuracy_pct,CV_pct,PassFail"
-    ]
+    header = "PipetteID,NominalVolume,TargetVolume,N,MeanVolume_ul,Accuracy_pct,CV_pct,PassFail"
+    if args.uncertainty:
+        header += ",U_combined_ul,U_expanded_ul"
+    out_lines = [header]
     for row in results:
-        out_lines.append(
+        line = (
             f"{row['PipetteID']},{row['NominalVolume']},{row['TargetVolume']},"
             f"{row['N']},{row['MeanVolume_ul']:.3f},"
             f"{row['Accuracy_pct']:.2f},{row['CV_pct']:.2f},{row['PassFail']}"
         )
+        if args.uncertainty:
+            uc = row.get("U_combined_ul")
+            ue = row.get("U_expanded_ul")
+            if isinstance(uc, (int, float)) and isinstance(ue, (int, float)):
+                line += f",{uc:.4f},{ue:.4f}"
+            else:
+                line += ",N/A,N/A"
+        out_lines.append(line)
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
