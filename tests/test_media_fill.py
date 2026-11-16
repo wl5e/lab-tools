@@ -99,3 +99,26 @@ def test_full_analysis_csv(tmp_path):
     with open(out_file) as f:
         lines = f.readlines()
     assert len(lines) >= 4  # header + 2 batch rows + TOTAL + blank + trend
+
+
+def test_plan_sample_size_basic():
+    assert mfa.plan_sample_size(0.001, 0.95) == 2996
+    assert mfa.plan_sample_size(0.01, 0.95) == 300
+
+
+def test_plan_sample_size_high_confidence():
+    assert mfa.plan_sample_size(0.001, 0.99) == 4606
+
+
+def test_plan_sample_size_invalid():
+    with pytest.raises(ValueError):
+        mfa.plan_sample_size(0, 0.95)
+    with pytest.raises(ValueError):
+        mfa.plan_sample_size(0.001, 1.0)
+
+
+def test_plan_cli(capsys):
+    rc = mfa.main(['plan', '--target-rate', '0.001', '--confidence', '0.95'])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert '2996' in out

@@ -48,6 +48,18 @@ def get_z(alpha: float) -> float:
         f"Alpha={alpha} not in precomputed levels. Supported: {sorted(ALPHA_TO_Z.keys())}"
     )
 
+def plan_sample_size(target_rate: float, confidence: float) -> int:
+    """Smallest n for a zero-contamination media fill.
+
+    Uses the one-sided upper Poisson bound u = -ln(1 - confidence) / n and
+    returns the smallest integer n with u <= target_rate.
+    """
+    if not (0 < target_rate < 1):
+        raise ValueError("target_rate must be in (0, 1)")
+    if not (0 < confidence < 1):
+        raise ValueError("confidence must be in (0, 1)")
+    return math.ceil(-math.log(1 - confidence) / target_rate)
+
 def wilson_ci(n: int, x: int, z: float) -> Tuple[float, float, float]:
     """
     Compute Wilson score confidence interval for a binomial proportion.
@@ -200,7 +212,31 @@ def _write_report(results: List[BatchResult], overall: BatchResult,
         writer.writerow(['trend_test_Z', Z, 'one_sided_p', p_val])
 
 
+def _plan_main(argv: List[str]) -> int:
+    parser = argparse.ArgumentParser(
+        description='Poisson sample-size planner for zero-contamination media fills.'
+    )
+    parser.add_argument('--target-rate', type=float, required=True,
+                        help='Target contamination rate (e.g. 0.001).')
+    parser.add_argument('--confidence', type=float, default=0.95,
+                        help='Confidence level for the upper bound (default 0.95).')
+    args = parser.parse_args(argv)
+    try:
+        n = plan_sample_size(args.target_rate, args.confidence)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    upper = -math.log(1 - args.confidence) / n
+    print(f"Minimum sample size: {n}")
+    print(f"Upper bound at 0 contaminants: {upper:.6f}")
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if argv and argv[0] == 'plan':
+        return _plan_main(argv[1:])
     parser = argparse.ArgumentParser(
         description='Analyze media fill contamination data per USP <1116>.'
     )

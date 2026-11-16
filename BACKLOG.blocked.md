@@ -48,3 +48,7 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-11-11)
 - `pipette-uncertainty-repeatability` Add repeatability and accuracy uncertainty components. Acceptance: the components are computed from the replicates and reported; tested against a hand calculation. Demo: `lab-tools pipette-cal --input pipette.csv --uncertainty`. Files: lab_tools/lab_ops/pipette_cal/core.py, tests/test_pipette_cal_core.py
   blocked: 3 attempts failed (2026-11-13)
+- `lod-loq-snr` Add the signal-to-noise LOD/LOQ method. Acceptance: blank noise yields LOD=3.3*S/N and LOQ=10*S/N, tested with a known noise level. Demo: `lab-tools lod-loq --input calibration.csv --method snr --noise 2.5`. Files: lab_tools/analytical/lod_loq.py, tests/test_lod_loq.py
+  blocked: 3 attempts failed (2026-11-16)
+- `lod-loq-snr-cli` Expose `--method {residual,snr}` and `--noise`. Acceptance: the default remains residual, SNR mode runs, and a subprocess test covers both. Demo: `lab-tools lod-loq --input calibration.csv --method snr --noise 2.5`. Files: lab_tools/analytical/lod_loq.py, tests/test_lod_loq.py
+  blocked: 3 attempts failed (2026-11-16)
