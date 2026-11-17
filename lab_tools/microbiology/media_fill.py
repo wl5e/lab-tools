@@ -227,6 +227,8 @@ def _plan_main(argv: List[str]) -> int:
         print(f"Error: {e}", file=sys.stderr)
         return 1
     upper = -math.log(1 - args.confidence) / n
+    print(f"Target rate: {args.target_rate}")
+    print(f"Confidence: {args.confidence}")
     print(f"Minimum sample size: {n}")
     print(f"Upper bound at 0 contaminants: {upper:.6f}")
     return 0

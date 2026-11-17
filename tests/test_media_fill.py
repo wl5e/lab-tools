@@ -122,3 +122,11 @@ def test_plan_cli(capsys):
     assert rc == 0
     out = capsys.readouterr().out
     assert '2996' in out
+
+
+def test_plan_cli_prints_rate_and_confidence(capsys):
+    rc = mfa.main(['plan', '--target-rate', '0.001', '--confidence', '0.95'])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert 'Target rate: 0.001' in out
+    assert 'Confidence: 0.95' in out
