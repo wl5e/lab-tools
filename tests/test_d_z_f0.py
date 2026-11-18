@@ -1,5 +1,6 @@
 """Tests for the D-value and Z-value calculator."""
 
+import json
 import math
 
 import pytest
@@ -153,3 +154,43 @@ def test_f0_cli_prints_f0(tmp_path, capsys):
     assert rc == 0
     out = capsys.readouterr().out
     assert "F0: 15.000 minutes" in out
+
+
+def test_dvalue_json_output(tmp_path, capsys):
+    csv_path = tmp_path / "survival.csv"
+    csv_path.write_text("time,logN\n0,6\n2,5\n4,4\n6,3\n", encoding="utf-8")
+    from lab_tools.cli import main as cli_main
+
+    rc = cli_main(["d-z-f0", "dvalue", str(csv_path), "--json"])
+    assert rc == 0
+    obj = json.loads(capsys.readouterr().out)
+    assert obj["D_value"] == pytest.approx(2.0, rel=1e-3)
+    assert len(obj["D_value_ci"]) == 2
+
+
+def test_zvalue_json_output(tmp_path, capsys):
+    csv_path = tmp_path / "z.csv"
+    csv_path.write_text(
+        "temperature,time,logN\n"
+        "121,0,6\n121,2,5\n121,4,4\n"
+        "131,0,6\n131,0.5,3.5\n131,1,1\n",
+        encoding="utf-8",
+    )
+    from lab_tools.cli import main as cli_main
+
+    rc = cli_main(["d-z-f0", "zvalue", str(csv_path), "--json"])
+    assert rc == 0
+    obj = json.loads(capsys.readouterr().out)
+    assert "per_temperature_D" in obj
+    assert obj["Z_value"] == pytest.approx(10.0, rel=1e-2)
+
+
+def test_f0_json_output(tmp_path, capsys):
+    csv_path = tmp_path / "profile.csv"
+    csv_path.write_text("time,temperature\n0,121.1\n15,121.1\n", encoding="utf-8")
+    from lab_tools.cli import main as cli_main
+
+    rc = cli_main(["d-z-f0", "f0", "--input", str(csv_path), "--json"])
+    assert rc == 0
+    obj = json.loads(capsys.readouterr().out)
+    assert obj["F0"] == pytest.approx(15.0)

@@ -52,3 +52,7 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-11-16)
 - `lod-loq-snr-cli` Expose `--method {residual,snr}` and `--noise`. Acceptance: the default remains residual, SNR mode runs, and a subprocess test covers both. Demo: `lab-tools lod-loq --input calibration.csv --method snr --noise 2.5`. Files: lab_tools/analytical/lod_loq.py, tests/test_lod_loq.py
   blocked: 3 attempts failed (2026-11-16)
+- `mpn-json` Add JSON output to MPN. Acceptance: `--json` emits estimate, CI and warnings as valid JSON; tested. Demo: `lab-tools mpn --input mpn.csv --json`. Files: lab_tools/microbiology/mpn.py, tests/test_mpn.py
+  blocked: 3 attempts failed (2026-11-18)
+- `sterility-json` Add JSON output to sterility sizing. Acceptance: `--json` emits units and volumes as valid JSON; tested. Demo: `lab-tools sterility size --method membrane --fill-volume 100 --json`. Files: lab_tools/sterility/sterility.py, tests/test_sterility.py
+  blocked: 3 attempts failed (2026-11-18)

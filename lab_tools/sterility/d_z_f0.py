@@ -10,6 +10,7 @@ License: MIT
 
 import argparse
 import csv
+import json
 import math
 import statistics
 import sys
@@ -253,6 +254,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--confidence", type=float, default=0.95,
         help="Confidence level for interval (default 0.95)",
     )
+    d_parser.add_argument(
+        "--json", action="store_true",
+        help="Output results as JSON",
+    )
 
     z_parser = subparsers.add_parser(
         "zvalue",
@@ -271,6 +276,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dvalue-only", action="store_true",
         help="Only output per-temperature D-values (no Z-value)",
     )
+    z_parser.add_argument(
+        "--json", action="store_true",
+        help="Output results as JSON",
+    )
 
     f_parser = subparsers.add_parser(
         "f0", help="Compute F0 from a time-temperature profile CSV"
@@ -286,6 +295,10 @@ def _build_parser() -> argparse.ArgumentParser:
     f_parser.add_argument(
         "--reference-temperature", type=float, default=121.1,
         help="Reference temperature in °C (default 121.1)",
+    )
+    f_parser.add_argument(
+        "--json", action="store_true",
+        help="Output results as JSON",
     )
 
     return parser
@@ -308,6 +321,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         try:
             temps, times, logN = parse_data(rows, require_temp=False)
             result = compute_d_value(times, logN, args.confidence)
+            if args.json:
+                print(json.dumps({
+                    "D_value": result["D_value_min"],
+                    "D_value_ci": list(result["confidence_interval_95"]),
+                    "confidence": args.confidence,
+                    "slope": result["slope"],
+                    "intercept": result["intercept"],
+                    "r_squared": result["r_squared"],
+                    "se_D": result["se_D"],
+                    "unit": result["unit"],
+                }))
+                return 0
             print("D-value Calculation Results")
             print("============================")
             print(f"D-value: {result['D_value_min']:.3f} minutes")
@@ -349,6 +374,29 @@ def main(argv: Optional[List[str]] = None) -> int:
             if not d_results:
                 print("Error: No valid D-values could be computed.", file=sys.stderr)
                 return 1
+
+            if args.json:
+                per_temp = {}
+                for temp in sorted(d_results):
+                    d = d_results[temp]
+                    per_temp[str(temp)] = {
+                        "D_value": d["D_value_min"],
+                        "D_value_ci": list(d["confidence_interval_95"]),
+                        "r_squared": d["r_squared"],
+                    }
+                json_out = {"per_temperature_D": per_temp}
+                if not args.dvalue_only:
+                    ts = sorted(d_results.keys())
+                    ds = [d_results[t]["D_value_min"] for t in ts]
+                    if len(ts) >= 2:
+                        try:
+                            zr = compute_z_value(ts, ds, args.confidence)
+                            json_out["Z_value"] = zr["Z_value_C"]
+                            json_out["Z_value_ci"] = list(zr["confidence_interval_95"])
+                        except ValueError:
+                            pass
+                print(json.dumps(json_out))
+                return 0
 
             print("Per-temperature D-values")
             print("--------------------------")
@@ -393,6 +441,13 @@ def main(argv: Optional[List[str]] = None) -> int:
             f0 = compute_f0(
                 profile, z=args.z, reference_temperature=args.reference_temperature
             )
+            if args.json:
+                print(json.dumps({
+                    "F0": f0,
+                    "z": args.z,
+                    "reference_temperature": args.reference_temperature,
+                }))
+                return 0
             print("F0 Calculation Results")
             print("======================")
             print(f"F0: {f0:.3f} minutes")
