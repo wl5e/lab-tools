@@ -48,7 +48,7 @@ re-admitted here, split into units that fit the 1–3 file rule.
 ## Month 2 — consistency and documentation
 
 - [x] `dzf0-json` Add JSON output to D/Z/F0. Acceptance: `--json` emits D, Z, F0 and their CIs as valid JSON; tested. Demo: `lab-tools d-z-f0 dvalue --input data.csv --json`. Files: lab_tools/sterility/d_z_f0.py, tests/test_d_z_f0.py | handler:
-- [ ] `primers-json` Add JSON output to primers. Acceptance: `--json` emits Tm models and dimer scores as valid JSON; tested. Demo: `lab-tools primers check --seq ACGTACGT --json`. Files: lab_tools/molecular/primers.py, tests/test_primers.py | handler:
+- [x] `primers-json` Add JSON output to primers. Acceptance: `--json` emits Tm models and dimer scores as valid JSON; tested. Demo: `lab-tools primers check --seq ACGTACGT --json`. Files: lab_tools/molecular/primers.py, tests/test_primers.py | handler:
 - [ ] `restriction-json` Add JSON output to restriction digests. Acceptance: `--json` emits cut sites and fragment sizes as valid JSON; tested. Demo: `lab-tools restriction digest --seq ACGTACGT --enzyme EcoRI --json`. Files: lab_tools/molecular/restriction/cli.py, tests/test_restriction.py | handler:
 - [ ] `phylogeny-json` Add JSON output to phylogeny. Acceptance: `--json` emits the Newick string and support values as valid JSON; tested. Demo: `lab-tools phylogeny nj --input distances.phy --json`. Files: lab_tools/molecular/phylogeny.py, tests/test_phylogeny.py | handler:
 - [ ] `hemocytometer-json` Add JSON output to hemocytometer. Acceptance: `--json` emits cells/mL, viability and dilution volumes as valid JSON; tested. Demo: `lab-tools hemocytometer count --live 120 --dead 8 --squares 5 --json`. Files: lab_tools/lab_ops/hemocytometer.py, tests/test_hemocytometer.py | handler:

@@ -1,3 +1,4 @@
+import json
 import pytest
 import math
 
@@ -110,3 +111,14 @@ class TestSantaLuciaTm:
     def test_invalid_sequence_raises(self):
         with pytest.raises(ValueError):
             santalucia_tm("ACGTX")
+
+
+class TestJsonOutput:
+    def test_cli_json_output(self, capsys):
+        assert main(["check", "--seq", "ACGTACGT", "--json"]) == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["sequence"] == "ACGTACGT"
+        assert data["wallace_tm"] == pytest.approx(24.0)
+        assert isinstance(data["santalucia_tm"], float)
+        assert data["self_dimer_score"] == 8
+        assert data["dimer_call"] == "WARN"

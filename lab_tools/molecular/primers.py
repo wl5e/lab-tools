@@ -8,6 +8,7 @@ Supports:
 """
 
 import argparse
+import json
 import math
 import sys
 
@@ -203,6 +204,11 @@ def main(argv=None) -> int:
         action="store_true",
         help="Report the 3' self-complementarity (self-dimer) score"
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit results as JSON"
+    )
 
     args = parser.parse_args(argv)
 
@@ -215,6 +221,22 @@ def main(argv=None) -> int:
         validate_sequence(sequence)
     except ValueError as e:
         parser.error(str(e))
+
+    if args.json:
+        result = {"sequence": sequence}
+        try:
+            result["wallace_tm"] = wallace_tm(sequence)
+        except ValueError as e:
+            result["wallace_error"] = str(e)
+        try:
+            result["santalucia_tm"] = santalucia_tm(sequence, args.conc, args.salt)
+        except ValueError as e:
+            result["santalucia_error"] = str(e)
+        score = self_dimer_score(sequence)
+        result["self_dimer_score"] = score
+        result["dimer_call"] = "PASS" if score <= 4 else "WARN"
+        print(json.dumps(result))
+        return 0
 
     if args.method in ("wallace", "both"):
         try:
