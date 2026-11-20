@@ -2,6 +2,7 @@
 """Phylogenetic Tree CLI – Neighbor-Joining tree builder."""
 
 import argparse
+import json
 import math
 import sys
 from typing import Dict, List, Tuple, Optional
@@ -275,6 +276,18 @@ def jc69_correct(matrix: List[List[float]]) -> List[List[float]]:
     return corrected
 
 
+def _collect_support(node: NJNode) -> List[float]:
+    """Collect branch lengths of internal nodes as support values."""
+    support: List[float] = []
+    if node.is_leaf():
+        return support
+    for child in node.children:
+        if not child.is_leaf():
+            support.append(round(child.length, 6))
+        support.extend(_collect_support(child))
+    return support
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description="Build a phylogenetic tree from a distance matrix using Neighbor-Joining."
@@ -291,6 +304,11 @@ def main(argv=None) -> int:
         "--ascii",
         action="store_true",
         help="Print an ASCII representation of the tree."
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the Newick string and support values as JSON."
     )
     parser.add_argument(
         "--distance-model",
@@ -323,17 +341,23 @@ def main(argv=None) -> int:
     tree = neighbor_joining(labels, matrix)
     newick_str = to_newick(tree) + ";"
 
+    if args.json:
+        payload = {"newick": newick_str, "support": _collect_support(tree)}
+        out_str = json.dumps(payload)
+    else:
+        out_str = newick_str
+
     if args.output:
         try:
             with open(args.output, 'w') as out:
-                out.write(newick_str + "\n")
+                out.write(out_str + "\n")
         except IOError as e:
             print(f"Error writing output: {e}", file=sys.stderr)
             return 1
     else:
-        print(newick_str)
+        print(out_str)
 
-    if args.ascii:
+    if args.ascii and not args.json:
         print(ascii_tree(tree))
 
     return 0

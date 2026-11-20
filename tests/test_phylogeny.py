@@ -125,3 +125,14 @@ def test_cli_distance_model_jc69(tmp_path):
     result = _run_phylogeny(tmp_path, JUKES_MATRIX, ["--distance-model", "jc69"])
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip()
+
+
+def test_cli_json_output(tmp_path):
+    import json
+    result = _run_phylogeny(tmp_path, SIMPLE_LOWER, ["--json"])
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert isinstance(payload, dict)
+    assert payload["newick"].endswith(";")
+    assert "A:" in payload["newick"]
+    assert isinstance(payload["support"], list)

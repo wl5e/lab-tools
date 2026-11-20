@@ -56,3 +56,5 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-11-18)
 - `sterility-json` Add JSON output to sterility sizing. Acceptance: `--json` emits units and volumes as valid JSON; tested. Demo: `lab-tools sterility size --method membrane --fill-volume 100 --json`. Files: lab_tools/sterility/sterility.py, tests/test_sterility.py
   blocked: 3 attempts failed (2026-11-18)
+- `restriction-json` Add JSON output to restriction digests. Acceptance: `--json` emits cut sites and fragment sizes as valid JSON; tested. Demo: `lab-tools restriction digest --seq ACGTACGT --enzyme EcoRI --json`. Files: lab_tools/molecular/restriction/cli.py, tests/test_restriction.py
+  blocked: 3 attempts failed (2026-11-20)
