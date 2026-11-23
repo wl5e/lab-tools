@@ -156,3 +156,32 @@ def test_chamber_factor_cli_flag(capsys):
     assert main(["count", "--live", "100", "--squares", "4", "--chamber-factor", "20000"]) == 0
     out = capsys.readouterr().out
     assert "500,000" in out
+
+
+def test_count_json_output(capsys):
+    import json
+
+    from lab_tools.lab_ops.hemocytometer import main
+
+    assert main(["count", "--live", "120", "--dead", "8", "--squares", "5", "--json"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["total_cells_counted"] == 128
+    assert data["viability_percent"] == pytest.approx(93.75)
+    assert data["cells_per_ml"] == pytest.approx(256000.0)
+    assert data["viable_cells_per_ml"] == pytest.approx(240000.0)
+
+
+def test_dilute_json_output(capsys):
+    import json
+
+    from lab_tools.lab_ops.hemocytometer import main
+
+    argv = [
+        "dilute", "--live", "120", "--dead", "30", "--squares", "4",
+        "--dilution", "2", "--target-conc", "200000", "--final-volume", "5",
+        "--json",
+    ]
+    assert main(argv) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["sample_volume_ml"] == pytest.approx(5 / 3)
+    assert data["diluent_volume_ml"] == pytest.approx(5.0 - 5 / 3)

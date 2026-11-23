@@ -7,6 +7,7 @@ viability, total viable cells, and dilution volumes from haemocytometer counts.
 """
 
 import argparse
+import json
 import sys
 from typing import List, Optional, Tuple
 
@@ -195,6 +196,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     count_parser.add_argument('--chamber-depth', type=float, default=0.1, help='Chamber depth in mm (default 0.1)')
     count_parser.add_argument('--chamber-factor', type=float, default=None, help='Chamber factor in cells/mL; overrides --chamber-depth')
     count_parser.add_argument('--volume', type=float, help='Original sample volume (mL) for total viable cells')
+    count_parser.add_argument('--json', action='store_true', help='Emit results as JSON')
 
     # dilute command
     dil_parser = subparsers.add_parser('dilute', help='Calculate volumes to achieve target concentration')
@@ -206,6 +208,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     dil_parser.add_argument('--chamber-factor', type=float, default=None, help='Chamber factor in cells/mL; overrides --chamber-depth')
     dil_parser.add_argument('--target-conc', type=float, required=True, help='Target viable cells/mL')
     dil_parser.add_argument('--final-volume', type=float, required=True, help='Final desired volume (mL)')
+    dil_parser.add_argument('--json', action='store_true', help='Emit results as JSON')
 
     # volume command
     vol_parser = subparsers.add_parser('volume', help='Volume needed for desired number of viable cells')
@@ -216,6 +219,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     vol_parser.add_argument('--chamber-depth', type=float, default=0.1, help='Chamber depth in mm (default 0.1)')
     vol_parser.add_argument('--chamber-factor', type=float, default=None, help='Chamber factor in cells/mL; overrides --chamber-depth')
     vol_parser.add_argument('--desired-cells', type=float, required=True, help='Desired number of viable cells')
+    vol_parser.add_argument('--json', action='store_true', help='Emit results as JSON')
 
     args = parser.parse_args(argv)
 
@@ -237,6 +241,20 @@ def main(argv: Optional[List[str]] = None) -> int:
                 dilution = args.dilution
 
             cc = CellCounter(live, dead, squares, dilution, _chamber_factor(args))
+            if args.json:
+                data = {
+                    "live_cells": live,
+                    "dead_cells": dead,
+                    "squares_counted": squares,
+                    "total_cells_counted": cc.total_cells_counted,
+                    "viability_percent": cc.viability,
+                    "cells_per_ml": cc.cells_per_ml,
+                    "viable_cells_per_ml": cc.viable_cells_per_ml,
+                }
+                if args.volume is not None:
+                    data["total_viable_cells"] = cc.total_viable_cells(args.volume)
+                print(json.dumps(data, indent=2))
+                return 0
             print_count_results(cc, args.volume)
 
         elif args.command == 'dilute':
@@ -244,6 +262,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             v_sample, v_diluent = cc.dilution_volumes(
                 args.target_conc, args.final_volume
             )
+            if args.json:
+                print(json.dumps({
+                    "target_conc": args.target_conc,
+                    "final_volume_ml": args.final_volume,
+                    "sample_volume_ml": v_sample,
+                    "diluent_volume_ml": v_diluent,
+                }, indent=2))
+                return 0
             rows = [
                 ("Target concentration", f"{args.target_conc:,.0f} cells/mL"),
                 ("Final volume", f"{args.final_volume:.3f} mL"),
@@ -255,6 +281,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         elif args.command == 'volume':
             cc = CellCounter(args.live, args.dead, args.squares, args.dilution, _chamber_factor(args))
             vol = cc.volume_for_cells(args.desired_cells)
+            if args.json:
+                print(json.dumps({
+                    "desired_cells": args.desired_cells,
+                    "sample_volume_ml": None if vol == float('inf') else vol,
+                }, indent=2))
+                return 0
             if vol == float('inf'):
                 print("Cannot obtain desired cells: no viable cells in sample.")
             else:
