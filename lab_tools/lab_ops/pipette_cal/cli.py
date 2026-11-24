@@ -2,6 +2,7 @@
 """Command-line interface for pipette calibration analysis."""
 
 import argparse
+import json
 import sys
 from lab_tools.lab_ops.pipette_cal.io import read_calibration_data
 from lab_tools.lab_ops.pipette_cal.core import analyze_calibration
@@ -22,6 +23,11 @@ def main(argv=None) -> int:
         action="store_true",
         help="Include combined and expanded (k=2) uncertainty columns.",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit per-pipette results as JSON.",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -35,6 +41,31 @@ def main(argv=None) -> int:
         return 1
 
     results = analyze_calibration(data)
+
+    if args.json:
+        payload = []
+        for row in results:
+            payload.append(
+                {
+                    "pipette_id": row["PipetteID"],
+                    "nominal_volume_ul": row["NominalVolume"],
+                    "target_volume_ul": row["TargetVolume"],
+                    "n": row["N"],
+                    "mean_volume_ul": row["MeanVolume_ul"],
+                    "accuracy_pct": row["Accuracy_pct"],
+                    "cv_pct": row["CV_pct"],
+                    "pass": str(row["PassFail"]).upper().startswith("PASS"),
+                    "pass_fail": row["PassFail"],
+                }
+            )
+        text = json.dumps(payload, indent=2)
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as f:
+                f.write(text + "\n")
+            print(f"Report written to {args.output}")
+        else:
+            print(text)
+        return 0
 
     header = "PipetteID,NominalVolume,TargetVolume,N,MeanVolume_ul,Accuracy_pct,CV_pct,PassFail"
     if args.uncertainty:

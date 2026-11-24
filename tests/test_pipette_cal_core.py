@@ -184,3 +184,29 @@ def test_analyze_calibration_reports_uncertainty():
     assert results[0]["U_expanded_ul"] == pytest.approx(
         2.0 * results[0]["U_combined_ul"], abs=1e-3
     )
+
+
+def test_cli_json_output(tmp_path):
+    import contextlib
+    import io
+    import json
+
+    from lab_tools.lab_ops.pipette_cal.cli import main
+
+    csv_path = tmp_path / "pipette.csv"
+    lines = ["PipetteID,NominalVolume,TargetVolume,Weight_mg,Temperature_C"]
+    lines.extend(["P20,20,20,20.0,20.0"] * 3)
+    csv_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc = main(["--input", str(csv_path), "--json"])
+
+    assert rc == 0
+    payload = json.loads(buf.getvalue())
+    assert len(payload) == 1
+    entry = payload[0]
+    assert entry["pipette_id"] == "P20"
+    assert "accuracy_pct" in entry
+    assert "cv_pct" in entry
+    assert entry["pass"] is True
