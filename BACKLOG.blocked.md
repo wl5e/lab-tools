@@ -58,3 +58,9 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-11-18)
 - `restriction-json` Add JSON output to restriction digests. Acceptance: `--json` emits cut sites and fragment sizes as valid JSON; tested. Demo: `lab-tools restriction digest --seq ACGTACGT --enzyme EcoRI --json`. Files: lab_tools/molecular/restriction/cli.py, tests/test_restriction.py
   blocked: 3 attempts failed (2026-11-20)
+- `hplc-json` Add JSON output to HPLC SST. Acceptance: `--json` emits plates, tailing, resolution and %RSD as valid JSON; tested. Demo: `lab-tools hplc-sst --input peaks.csv --json`. Files: lab_tools/analytical/hplc_sst.py, tests/test_hplc_sst.py
+  blocked: 3 attempts failed (2026-11-25)
+- `lod-loq-json` Add JSON output to LOD/LOQ. Acceptance: `--json` emits slope, Sy, LOD and LOQ as valid JSON; tested. Demo: `lab-tools lod-loq --input calibration.csv --json`. Files: lab_tools/analytical/lod_loq.py, tests/test_lod_loq.py
+  blocked: 3 attempts failed (2026-11-25)
+- `growth-curve-json` Add JSON output to growth-curve fitting. Acceptance: `--json` emits per-well parameters and model choice as valid JSON; tested. Demo: `lab-tools growth-curve fit --input od.csv --json`. Files: lab_tools/microbiology/growth_curve/main.py, tests/test_growth_curve_analyzer.py
+  blocked: 3 attempts failed (2026-11-25)
