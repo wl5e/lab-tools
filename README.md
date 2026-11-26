@@ -12,25 +12,25 @@ lab-tools cfu --help
 
 ## Tools
 
-| Domain | Tool | What it does |
+| Tool | Purpose | Demo |
 |---|---|---|
-| Microbiology / QC | `cfu` | CFU enumeration from dilution plates (USP ⟨61⟩/⟨62⟩, EP 2.6.12) |
-| | `mpn` | Most probable number |
-| | `media-fill` | Aseptic process simulation (USP ⟨1116⟩) |
-| | `growth-curve` | Logistic / Gompertz growth kinetics |
-| | `bioburden-spc` | I-MR control charts (Western Electric) |
-| Sterility / thermal | `d-z-f0` | D-value, Z-value, F0 lethality |
-| | `sterility` | Sterility-test sample sizes (USP ⟨71⟩) |
-| | `endotoxin` | Endotoxin limits + MVD (USP ⟨85⟩) |
-| Molecular biology | `qpcr` | ΔΔCt relative gene expression |
-| | `primers` | Annealing temperature + dimer analysis |
-| | `restriction` | Restriction digest simulation |
-| | `phylogeny` | Neighbor-joining trees |
-| Analytical | `elisa` | 4PL standard curves |
-| | `lod-loq` | LOD / LOQ (ICH Q2(R1)) |
-| | `hplc-sst` | HPLC system suitability |
-| Lab operations | `hemocytometer` | Cell count / viability |
-| | `pipette-cal` | Pipette calibration (ISO 8655) |
+| `cfu` | CFU enumeration from dilution plates (USP ⟨61⟩/⟨62⟩) | `lab-tools cfu --help` |
+| `mpn` | Most probable number estimate | `lab-tools mpn --help` |
+| `media-fill` | Aseptic process simulation (USP ⟨1116⟩) | `lab-tools media-fill --help` |
+| `growth-curve` | Logistic / Gompertz growth kinetics | `lab-tools growth-curve --help` |
+| `bioburden-spc` | I-MR control charts (Western Electric) | `lab-tools bioburden-spc --help` |
+| `d-z-f0` | D-value, Z-value, F0 lethality | `lab-tools d-z-f0 --help` |
+| `sterility` | Sterility-test sample sizes (USP ⟨71⟩) | `lab-tools sterility --help` |
+| `endotoxin` | Endotoxin limits + MVD (USP ⟨85⟩) | `lab-tools endotoxin --help` |
+| `qpcr` | ΔΔCt relative gene expression | `lab-tools qpcr --help` |
+| `primers` | Annealing temperature + dimer analysis | `lab-tools primers --help` |
+| `restriction` | Restriction digest simulation | `lab-tools restriction --help` |
+| `phylogeny` | Neighbor-joining trees | `lab-tools phylogeny --help` |
+| `elisa` | 4PL standard curves | `lab-tools elisa --help` |
+| `lod-loq` | LOD / LOQ (ICH Q2(R1)) | `lab-tools lod-loq --help` |
+| `hplc-sst` | HPLC system suitability | `lab-tools hplc-sst --help` |
+| `hemocytometer` | Cell count / viability | `lab-tools hemocytometer --help` |
+| `pipette-cal` | Pipette calibration (ISO 8655) | `lab-tools pipette-cal --help` |
 
 ## cfu — worked example
 

@@ -64,3 +64,5 @@ back to BACKLOG.md to retry.
   blocked: 3 attempts failed (2026-11-25)
 - `growth-curve-json` Add JSON output to growth-curve fitting. Acceptance: `--json` emits per-well parameters and model choice as valid JSON; tested. Demo: `lab-tools growth-curve fit --input od.csv --json`. Files: lab_tools/microbiology/growth_curve/main.py, tests/test_growth_curve_analyzer.py
   blocked: 3 attempts failed (2026-11-25)
+- `common-error-format` Use one error format across the CLI. Acceptance: malformed input prints `error: <tool>: <message>` and exit 2; tested for three tools. Demo: `lab-tools cfu calculate --counts nope`. Files: lab_tools/cli.py, tests/test_cli.py
+  blocked: 3 attempts failed (2026-11-26)
