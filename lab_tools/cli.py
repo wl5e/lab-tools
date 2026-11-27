@@ -63,6 +63,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not argv or argv[0] in ("-h", "--help", "help"):
         print(_usage())
         return 0
+    if argv[0] == "list":
+        print("\n".join(sorted(TOOLS)))
+        return 0
     name = argv[0]
     if name not in TOOLS:
         print(f"lab-tools: unknown tool '{name}'\n", file=sys.stderr)

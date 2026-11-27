@@ -32,6 +32,30 @@ lab-tools cfu --help
 | `hemocytometer` | Cell count / viability | `lab-tools hemocytometer --help` |
 | `pipette-cal` | Pipette calibration (ISO 8655) | `lab-tools pipette-cal --help` |
 
+## Quick demos
+
+Every tool has a copy-paste demo command:
+
+```bash
+lab-tools cfu --help
+lab-tools mpn --help
+lab-tools media-fill --help
+lab-tools growth-curve --help
+lab-tools bioburden-spc --help
+lab-tools d-z-f0 --help
+lab-tools sterility --help
+lab-tools endotoxin --help
+lab-tools qpcr --help
+lab-tools primers --help
+lab-tools restriction --help
+lab-tools phylogeny --help
+lab-tools elisa --help
+lab-tools lod-loq --help
+lab-tools hplc-sst --help
+lab-tools hemocytometer --help
+lab-tools pipette-cal --help
+```
+
 ## cfu — worked example
 
 A 1:10 serial dilution plated at 0.1 mL per plate with duplicate counts:

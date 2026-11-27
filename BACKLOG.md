@@ -53,7 +53,7 @@ re-admitted here, split into units that fit the 1–3 file rule.
 - [x] `hemocytometer-json` Add JSON output to hemocytometer. Acceptance: `--json` emits cells/mL, viability and dilution volumes as valid JSON; tested. Demo: `lab-tools hemocytometer count --live 120 --dead 8 --squares 5 --json`. Files: lab_tools/lab_ops/hemocytometer.py, tests/test_hemocytometer.py | handler:
 - [x] `pipette-json` Add JSON output to pipette calibration. Acceptance: `--json` emits per-pipette accuracy, CV and pass/fail as valid JSON; tested. Demo: `lab-tools pipette-cal --input pipette.csv --json`. Files: lab_tools/lab_ops/pipette_cal/cli.py, tests/test_pipette_cal_core.py | handler:
 - [x] `readme-tool-index` Add a per-tool index with one-line purpose and one demo command. Acceptance: README lists all 17 tools with a purpose and a command; checked by a test that counts rows. Demo: `grep -c "^| \`" README.md`. Files: README.md, tests/test_readme.py | handler:
-- [ ] `readme-demo-index` Add a copy-paste demo section per tool. Acceptance: every tool in `lab-tools list` has a demo command in the README; checked by a test. Demo: `lab-tools list`. Files: README.md, tests/test_readme.py | handler:
+- [x] `readme-demo-index` Add a copy-paste demo section per tool. Acceptance: every tool in `lab-tools list` has a demo command in the README; checked by a test. Demo: `lab-tools list`. Files: README.md, tests/test_readme.py | handler:
 - [ ] `cli-list-tools` Add `lab-tools list` with tool names and one-line descriptions. Acceptance: the command exits 0 and prints all 17 tools; tested. Demo: `lab-tools list`. Files: lab_tools/cli.py, tests/test_cli.py | handler:
 
 ## Month 3 — new capabilities and surface polish
